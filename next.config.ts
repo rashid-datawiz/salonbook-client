@@ -13,6 +13,13 @@ const nextConfig: NextConfig = {
       },
     },
   },
+  images: {
+    remotePatterns: [
+      { hostname: "images.unsplash.com" },
+      { hostname: "i.ibb.co" },
+      { hostname: "i.ibb.co.com" },
+    ],
+  },
 };
 
 export default nextConfig;
