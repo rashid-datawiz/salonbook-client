@@ -9,6 +9,7 @@ import "./globals.css";
 const playfair = Playfair_Display({
   variable: "--font-heading",
   subsets: ["latin"],
+  style: ["normal", "italic"],
   display: "swap",
 });
 
