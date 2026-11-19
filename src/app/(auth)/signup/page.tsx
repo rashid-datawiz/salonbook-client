@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { User, Mail, Phone, Lock, Eye, EyeOff, ArrowRight, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
+import { User, Mail, Phone, Image as ImageIcon, Lock, Eye, EyeOff, ArrowRight, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
+import { signUp } from "@/lib/auth-client";
 
 /* ─────────────────────────────────────────────────────────────────────────────
    SignUpPage Component
@@ -15,6 +16,7 @@ export default function SignUpPage() {
     name: "",
     email: "",
     phone: "",
+    image: "",
     password: "",
     confirmPassword: "",
     agreeTerms: true,
@@ -64,12 +66,18 @@ export default function SignUpPage() {
 
     // ─────────────────────────────────────────────────────────────────────────
     // TODO: Connect Better Auth / NextAuth registration here:
-    // await authClient.signUp.email({
-    //   name: formData.name,
-    //   email: formData.email,
-    //   password: formData.password,
-    //   image: undefined,
-    // });
+    const { error } = await signUp.email({
+       name: formData.name,
+       email: formData.email,
+       password: formData.password,
+       image: formData.image || undefined,
+       callbackURL: "/",
+    });
+    if (error) {
+      setIsLoading(false);
+      setErrorMessage(error.message || "Unable to create your account.");
+      return;
+    }
     // ─────────────────────────────────────────────────────────────────────────
 
     // Simulating authentication response for frontend demonstration
@@ -251,6 +259,29 @@ export default function SignUpPage() {
                 autoComplete="tel"
                 placeholder="+880 1234-567890"
                 value={formData.phone}
+                onChange={handleChange}
+                className="w-full rounded-lg border border-white/10 bg-white/5 py-2.5 pl-10 pr-4 text-sm text-white placeholder:text-stone-500 transition-colors focus:border-[#C4A265] focus:bg-black/20 focus:outline-none"
+              />
+            </div>
+          </div>
+
+          {/* Profile Image */}
+          <div>
+            <label
+              htmlFor="image"
+              className="block text-[11px] font-bold tracking-wider text-stone-300 uppercase mb-1.5"
+            >
+              PROFILE IMAGE URL
+            </label>
+            <div className="relative">
+              <ImageIcon className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-stone-500" />
+              <input
+                id="image"
+                name="image"
+                type="url"
+                autoComplete="url"
+                placeholder="https://example.com/profile.jpg"
+                value={formData.image}
                 onChange={handleChange}
                 className="w-full rounded-lg border border-white/10 bg-white/5 py-2.5 pl-10 pr-4 text-sm text-white placeholder:text-stone-500 transition-colors focus:border-[#C4A265] focus:bg-black/20 focus:outline-none"
               />
