@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
+import Image from "next/image";
+import { buttonVariants } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -9,6 +10,7 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Clock, ArrowRight } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 /* ───────────────────────────────────────────────
    Featured Services — Displays a curated grid
@@ -123,15 +125,15 @@ export default function FeaturedServices() {
               className="group overflow-hidden transition-shadow hover:shadow-md"
             >
               {/* Service image */}
-              <div className="relative aspect-[3/2] overflow-hidden">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
+              <div className="relative aspect-[3/2] overflow-hidden bg-stone-100 dark:bg-stone-800">
+                <Image
                   src={service.image}
                   alt={service.name}
-                  className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
-                  loading="lazy"
+                  fill
+                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                  className="object-cover transition-transform duration-300 group-hover:scale-[1.03]"
                 />
-                <Badge className="absolute top-3 left-3" variant="secondary">
+                <Badge className="absolute top-3 left-3 z-10" variant="secondary">
                   {service.category}
                 </Badge>
               </div>
@@ -156,15 +158,16 @@ export default function FeaturedServices() {
               </CardContent>
 
               <CardFooter>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="ml-auto gap-1 text-primary hover:text-primary"
-                  render={<Link href={`/services/${service.id}`} />}
+                <Link
+                  href={`/services/${service.id}`}
+                  className={cn(
+                    buttonVariants({ variant: "ghost", size: "sm" }),
+                    "ml-auto gap-1 text-primary hover:text-primary"
+                  )}
                 >
                   View Details
                   <ArrowRight className="size-3.5" />
-                </Button>
+                </Link>
               </CardFooter>
             </Card>
           ))}
@@ -172,10 +175,13 @@ export default function FeaturedServices() {
 
         {/* View all CTA */}
         <div className="mt-10 text-center">
-          <Button variant="outline" size="lg" render={<Link href="/services" />}>
+          <Link
+            href="/services"
+            className={cn(buttonVariants({ variant: "outline", size: "lg" }))}
+          >
             View All Services
             <ArrowRight className="ml-2 size-4" />
-          </Button>
+          </Link>
         </div>
       </div>
     </section>

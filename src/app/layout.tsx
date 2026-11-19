@@ -26,7 +26,11 @@ export const metadata: Metadata = {
     "Book your next salon appointment with ease. Explore services, choose your time, and look your best.",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
   return (
     <html
       lang="en"

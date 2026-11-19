@@ -132,7 +132,7 @@ export default function Footer() {
         {/* ── Bottom row: social + copyright ── */}
         <div className="flex flex-col items-center justify-between gap-4 sm:flex-row">
           <p className="text-xs text-muted-foreground">
-            &copy; {new Date().getFullYear()} SalonBook. All rights reserved.
+            &copy; 2026 SalonBook. All rights reserved.
           </p>
 
           <div className="flex items-center gap-3">

@@ -1,6 +1,7 @@
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import { ArrowRight, Scissors, Calendar, Star } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 /* ───────────────────────────────────────────────
    How It Works — Three-step visual guide showing
@@ -80,10 +81,13 @@ export default function HowItWorks() {
 
         {/* CTA */}
         <div className="mt-12 text-center">
-          <Button size="lg" render={<Link href="/services" />} className="gap-2">
+          <Link
+            href="/services"
+            className={cn(buttonVariants({ size: "lg" }), "gap-2")}
+          >
             Get Started Now
             <ArrowRight className="size-4" />
-          </Button>
+          </Link>
         </div>
       </div>
     </section>

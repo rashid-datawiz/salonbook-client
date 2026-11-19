@@ -1,6 +1,7 @@
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import { CalendarDays, ArrowRight } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 /* ───────────────────────────────────────────────
    Booking CTA — A warm, inviting call-to-action
@@ -33,22 +34,22 @@ export default function BookingCta() {
         </p>
 
         <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-          <Button
-            size="lg"
-            render={<Link href="/services" />}
-            className="gap-2 px-6 text-sm"
+          <Link
+            href="/services"
+            className={cn(buttonVariants({ size: "lg" }), "gap-2 px-6 text-sm")}
           >
             Book an Appointment
             <ArrowRight className="size-4" />
-          </Button>
-          <Button
-            variant="outline"
-            size="lg"
-            render={<Link href="/signup" />}
-            className="border-white/20 bg-white/5 px-6 text-sm text-white hover:bg-white/10 hover:text-white"
+          </Link>
+          <Link
+            href="/signup"
+            className={cn(
+              buttonVariants({ variant: "outline", size: "lg" }),
+              "border-white/20 bg-white/5 px-6 text-sm text-white hover:bg-white/10 hover:text-white"
+            )}
           >
             Sign Up Free
-          </Button>
+          </Link>
         </div>
       </div>
     </section>
