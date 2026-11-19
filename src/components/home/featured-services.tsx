@@ -1,23 +1,25 @@
 import Link from "next/link";
-import Image from "next/image";
-import { buttonVariants } from "@/components/ui/button";
 import {
-  Card,
-  CardContent,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Clock, ArrowRight } from "lucide-react";
-import { cn } from "@/lib/utils";
+  Scissors,
+  Crown,
+  Droplets,
+  Layers,
+  Sparkles,
+  Smile,
+  Clock,
+  ArrowRight,
+  Calendar,
+} from "lucide-react";
 
-/* ───────────────────────────────────────────────
-   Featured Services — Displays a curated grid
-   of salon services with price, duration, and
-   category badges. Static placeholder data
-   until the API is wired up.
-   ─────────────────────────────────────────────── */
+/* ─────────────────────────────────────────────────────────────────────────────
+   FeaturedServices Component (Assignment Doc: Dynamic Section 1)
+   Inspired by the reference image's "BROWSE OUR SERVICES" 2×3 card section:
+     - Centered uppercase heading with clean decorative separator rules
+     - Minimalist luxury card container holding 6 popular services
+     - Clear icons, titles, descriptive blurbs, duration, and prices in USD
+     - Direct "Book Slot" / "View Details" links
+     - Centered "BOOK AN APPOINTMENT" call-to-action button
+   ───────────────────────────────────────────────────────────────────────────── */
 
 type Service = {
   id: string;
@@ -26,163 +28,170 @@ type Service = {
   description: string;
   price: number;
   duration: number; // minutes
-  image: string;
+  icon: React.ComponentType<{ className?: string }>;
 };
 
-/* Placeholder services — replace with API data later */
 const FEATURED_SERVICES: Service[] = [
   {
     id: "1",
-    name: "Classic Haircut & Styling",
-    category: "Hair",
+    name: "ADULT HAIRCUT",
+    category: "Haircare",
     description:
-      "Expert cut and style tailored to your face shape and preferences. Includes wash and blow-dry.",
+      "Precision shear cutting tailored to your face shape, followed by warm hair rinse and bespoke styling.",
     price: 35,
     duration: 45,
-    image:
-      "https://images.unsplash.com/photo-1560066984-138dadb4c035?w=600&h=400&fit=crop&q=80",
+    icon: Scissors,
   },
   {
     id: "2",
-    name: "Bridal Makeup Package",
-    category: "Makeup",
+    name: "KIDS & YOUTH HAIRCUT",
+    category: "Haircare",
     description:
-      "Complete bridal look with premium products. Includes trial session and touch-up kit.",
-    price: 120,
-    duration: 90,
-    image:
-      "https://images.unsplash.com/photo-1487412912498-0447578fcca8?w=600&h=400&fit=crop&q=80",
+      "Gentle, patient scissor styling and modern tapers designed specifically for younger gentlemen and ladies.",
+    price: 15,
+    duration: 30,
+    icon: Sparkles,
   },
   {
     id: "3",
-    name: "Deep Conditioning Treatment",
-    category: "Hair Care",
+    name: "BEARD TRIM & SCULPT",
+    category: "Grooming",
     description:
-      "Intensive repair treatment for damaged hair. Restores moisture, shine, and strength.",
-    price: 50,
-    duration: 60,
-    image:
-      "https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=600&h=400&fit=crop&q=80",
+      "Clipper fading, razor-sharp edge detailing, warm towel compress, and organic cedarwood conditioning oils.",
+    price: 20,
+    duration: 30,
+    icon: Crown,
   },
   {
     id: "4",
-    name: "Luxury Facial Spa",
-    category: "Skin Care",
+    name: "HOT TOWEL NECK SHAVE",
+    category: "Shave",
     description:
-      "Rejuvenating facial with cleansing, exfoliation, mask, and massage for glowing skin.",
-    price: 65,
-    duration: 75,
-    image:
-      "https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?w=600&h=400&fit=crop&q=80",
+      "Classic straight razor hot lather shave with steamed eucalyptus towel and soothing cooling balm.",
+    price: 18,
+    duration: 25,
+    icon: Layers,
   },
   {
     id: "5",
-    name: "Manicure & Pedicure Combo",
-    category: "Nails",
+    name: "SCALP MOISTURIZING RITUAL",
+    category: "Treatment",
     description:
-      "Complete nail care package with shaping, cuticle care, polish, and relaxing hand/foot massage.",
-    price: 45,
-    duration: 60,
-    image:
-      "https://images.unsplash.com/photo-1604654894610-df63bc536371?w=600&h=400&fit=crop&q=80",
+      "Intensive keratin hair mask, follicle exfoliation treatment, and revitalizing acupressure head massage.",
+    price: 40,
+    duration: 45,
+    icon: Droplets,
   },
   {
     id: "6",
-    name: "Hair Color & Highlights",
-    category: "Hair",
+    name: "EXECUTIVE GLOW FACIAL",
+    category: "Skincare",
     description:
-      "Professional color application with premium dyes. Balayage, ombre, or full color available.",
-    price: 80,
-    duration: 120,
-    image:
-      "https://images.unsplash.com/photo-1562322140-8baeececf3df?w=600&h=400&fit=crop&q=80",
+      "Botanical deep pore cleansing, ultrasound scrubber exfoliation, clay mask, and hydrating peptide serum.",
+    price: 45,
+    duration: 60,
+    icon: Smile,
   },
 ];
 
 export default function FeaturedServices() {
   return (
-    <section className="bg-background py-16 sm:py-20 lg:py-24">
+    <section className="bg-[#FAF7F2] py-20 sm:py-24 lg:py-28 dark:bg-[#151311]">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        {/* Section header */}
-        <div className="mb-12 text-center">
-          <span className="text-sm font-medium uppercase tracking-wider text-primary">
-            What We Offer
-          </span>
-          <h2 className="mt-2 font-heading text-3xl font-bold tracking-tight sm:text-4xl">
-            Our Popular Services
+        
+        {/* ── Section Header with Ornamental Separator Lines ── */}
+        <div className="mx-auto max-w-3xl text-center">
+          <div className="flex items-center justify-center gap-3">
+            <span className="h-px w-10 sm:w-16 bg-[#C4A265]/50" />
+            <span className="text-xs font-bold tracking-[0.25em] text-[#8F6E2E] dark:text-[#C4A265] uppercase">
+              POPULAR MENUS
+            </span>
+            <span className="h-px w-10 sm:w-16 bg-[#C4A265]/50" />
+          </div>
+
+          <h2 className="mt-3 font-heading text-3xl sm:text-4xl lg:text-5xl font-bold tracking-wider text-stone-900 uppercase dark:text-stone-50">
+            BROWSE OUR SERVICES
           </h2>
-          <p className="mx-auto mt-3 max-w-2xl text-muted-foreground">
-            From classic cuts to luxury spa treatments — explore our most booked
-            services and find the perfect one for you.
+
+          <p className="mt-3 text-sm sm:text-base text-stone-600 dark:text-stone-400 font-light max-w-xl mx-auto">
+            Choose from our most requested salon rituals, each delivered with artisanal precision and premium apothecary formulations.
           </p>
         </div>
 
-        {/* Service cards grid */}
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {FEATURED_SERVICES.map((service) => (
-            <Card
-              key={service.id}
-              className="group overflow-hidden transition-shadow hover:shadow-md"
-            >
-              {/* Service image */}
-              <div className="relative aspect-[3/2] overflow-hidden bg-stone-100 dark:bg-stone-800">
-                <Image
-                  src={service.image}
-                  alt={service.name}
-                  fill
-                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                  className="object-cover transition-transform duration-300 group-hover:scale-[1.03]"
-                />
-                <Badge className="absolute top-3 left-3 z-10" variant="secondary">
-                  {service.category}
-                </Badge>
-              </div>
-
-              <CardHeader>
-                <CardTitle className="line-clamp-1">{service.name}</CardTitle>
-              </CardHeader>
-
-              <CardContent className="space-y-3">
-                <p className="line-clamp-2 text-sm text-muted-foreground">
-                  {service.description}
-                </p>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="font-semibold text-primary">
-                    ${service.price}
-                  </span>
-                  <span className="flex items-center gap-1 text-muted-foreground">
-                    <Clock className="size-3.5" />
-                    {service.duration} min
-                  </span>
-                </div>
-              </CardContent>
-
-              <CardFooter>
-                <Link
-                  href={`/services/${service.id}`}
-                  className={cn(
-                    buttonVariants({ variant: "ghost", size: "sm" }),
-                    "ml-auto gap-1 text-primary hover:text-primary"
-                  )}
+        {/* ── 2x3 Services Grid Container (Reference Layout) ── */}
+        <div className="mt-14 mx-auto max-w-5xl rounded-2xl border border-stone-200/90 bg-white p-6 sm:p-10 lg:p-12 shadow-xl dark:border-stone-800 dark:bg-[#1C1A17]">
+          <div className="grid grid-cols-1 gap-x-12 gap-y-10 sm:grid-cols-2">
+            {FEATURED_SERVICES.map((service) => {
+              const Icon = service.icon;
+              return (
+                <div
+                  key={service.id}
+                  className="group relative flex flex-col justify-between border-b border-stone-100 pb-8 last:border-b-0 sm:last:border-b-0 sm:[&:nth-last-child(2)]:border-b-0 dark:border-stone-800/80"
                 >
-                  View Details
-                  <ArrowRight className="size-3.5" />
-                </Link>
-              </CardFooter>
-            </Card>
-          ))}
+                  <div>
+                    {/* Top row: Icon + Price */}
+                    <div className="flex items-center justify-between">
+                      <div className="flex size-10 items-center justify-center rounded-lg bg-stone-100 text-stone-800 transition-colors duration-300 group-hover:bg-[#C4A265] group-hover:text-stone-950 dark:bg-stone-800 dark:text-stone-200">
+                        <Icon className="size-5" />
+                      </div>
+                      <span className="font-heading text-lg font-bold tracking-tight text-stone-900 dark:text-stone-100">
+                        ${service.price} <span className="text-xs font-normal text-stone-400">USD</span>
+                      </span>
+                    </div>
+
+                    {/* Service Name */}
+                    <h3 className="mt-4 font-heading text-base sm:text-lg font-bold tracking-wider text-stone-900 uppercase dark:text-stone-50 group-hover:text-[#8F6E2E] dark:group-hover:text-[#C4A265] transition-colors">
+                      {service.name}
+                    </h3>
+
+                    {/* Description */}
+                    <p className="mt-2 text-xs sm:text-sm text-stone-500 dark:text-stone-400 font-light leading-relaxed">
+                      {service.description}
+                    </p>
+                  </div>
+
+                  {/* Bottom row: Duration & Action link */}
+                  <div className="mt-5 flex items-center justify-between pt-2">
+                    <span className="flex items-center gap-1.5 text-xs text-stone-400">
+                      <Clock className="size-3.5 text-[#C4A265]" />
+                      <span>{service.duration} mins</span>
+                    </span>
+
+                    <Link
+                      href={`/services/${service.id}`}
+                      className="inline-flex items-center gap-1 text-xs font-semibold tracking-wider text-stone-600 hover:text-[#8F6E2E] dark:text-stone-300 dark:hover:text-[#C4A265] uppercase transition-colors"
+                    >
+                      <span>Details</span>
+                      <ArrowRight className="size-3 transition-transform group-hover:translate-x-1" />
+                    </Link>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Centered CTA inside or below the container */}
+          <div className="mt-12 text-center pt-8 border-t border-stone-200/80 dark:border-stone-800/80">
+            <Link
+              href="#appointment"
+              className="inline-flex h-12 items-center justify-center gap-2 rounded-md bg-[#C4A265] px-8 text-xs font-bold tracking-widest text-stone-950 uppercase shadow-md transition-all duration-300 hover:bg-[#B39154] hover:shadow-lg active:scale-[0.98]"
+            >
+              <Calendar className="size-4" />
+              <span>BOOK AN APPOINTMENT</span>
+            </Link>
+          </div>
         </div>
 
-        {/* View all CTA */}
-        <div className="mt-10 text-center">
+        {/* View full catalog footer link */}
+        <div className="mt-8 text-center">
           <Link
             href="/services"
-            className={cn(buttonVariants({ variant: "outline", size: "lg" }))}
+            className="text-xs font-semibold tracking-widest text-stone-500 hover:text-stone-900 dark:hover:text-stone-100 uppercase"
           >
-            View All Services
-            <ArrowRight className="ml-2 size-4" />
+            Explore all 20+ specialized salon services →
           </Link>
         </div>
+
       </div>
     </section>
   );
