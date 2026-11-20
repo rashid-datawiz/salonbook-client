@@ -16,8 +16,19 @@ import {
   CheckCircle2,
   AlertCircle,
   LogOut,
+  ShieldCheck,
+  Check,
 } from "lucide-react";
-import { signUp, signIn, signOut, useSession } from "@/lib/auth-client";
+import { cn } from "@/lib/utils";
+import {
+  signUp,
+  signIn,
+  signOut,
+  useSession,
+  getActiveUserRole,
+  setUserRolePreference,
+  clearUserRolePreference,
+} from "@/lib/auth-client";
 
 /* ─────────────────────────────────────────────────────────────────────────────
    SignUpPage Component
@@ -36,6 +47,7 @@ export default function SignUpPage() {
     image: "",
     password: "",
     confirmPassword: "",
+    role: "customer" as "customer" | "admin",
     agreeTerms: true,
   });
 
@@ -83,13 +95,21 @@ export default function SignUpPage() {
     setIsLoading(true);
 
     try {
+      // 1. Immediately cache the chosen role for instant client reactivity & fallback
+      setUserRolePreference(formData.role);
+
+      const targetDashboard =
+        formData.role === "admin" ? "/dashboard/admin" : "/dashboard/customer";
+
+      // 2. Submit to Better Auth with the explicit role
       const { error } = await signUp.email({
         name: formData.name,
         email: formData.email,
         password: formData.password,
         image: formData.image || undefined,
-        callbackURL: "/",
-      });
+        role: formData.role,
+        callbackURL: targetDashboard,
+      } as Parameters<typeof signUp.email>[0] & { role?: string });
 
       if (error) {
         setIsLoading(false);
@@ -98,11 +118,13 @@ export default function SignUpPage() {
       }
 
       setSuccessMessage(
-        `Welcome, ${formData.name}! Your account has been created. Redirecting...`
+        `Welcome, ${formData.name}! Your ${
+          formData.role === "admin" ? "Administrator" : "Customer"
+        } account has been created. Routing to your dashboard...`
       );
 
       setTimeout(() => {
-        router.push("/");
+        router.push(targetDashboard);
         router.refresh();
       }, 700);
     } catch (err) {
@@ -144,6 +166,7 @@ export default function SignUpPage() {
     setIsSigningOut(true);
     setErrorMessage(null);
     try {
+      clearUserRolePreference();
       await signOut();
       router.refresh();
     } catch (err) {
@@ -155,6 +178,10 @@ export default function SignUpPage() {
 
   /* ── If User is Already Signed In ── */
   if (!isSessionPending && session?.user) {
+    const activeRole = getActiveUserRole(session.user.role);
+    const targetDashboard =
+      activeRole === "admin" ? "/dashboard/admin" : "/dashboard/customer";
+
     return (
       <div className="w-full max-w-md">
         <div className="rounded-2xl border border-white/10 bg-[#181614]/95 p-7 sm:p-9 shadow-2xl backdrop-blur-md text-center">
@@ -174,21 +201,41 @@ export default function SignUpPage() {
               {session.user.name || session.user.email}
             </strong>
           </p>
+          <div className="mt-2 inline-flex items-center gap-1.5 rounded bg-[#C4A265]/15 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider text-[#C4A265]">
+            {activeRole === "admin" ? (
+              <>
+                <ShieldCheck className="size-3 text-[#C4A265]" />
+                <span>Administrator</span>
+              </>
+            ) : (
+              <>
+                <User className="size-3 text-[#C4A265]" />
+                <span>Verified Client</span>
+              </>
+            )}
+          </div>
 
           <div className="mt-8 flex flex-col gap-3">
             <Link
-              href="/"
+              href={targetDashboard}
               className="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-[#C4A265] px-6 text-xs font-bold tracking-widest text-stone-950 uppercase transition-all hover:bg-[#B39154]"
             >
-              <span>CONTINUE TO SALONBOOK</span>
+              <span>{activeRole === "admin" ? "GO TO ADMIN DASHBOARD" : "GO TO CUSTOMER DASHBOARD"}</span>
               <ArrowRight className="size-3.5" />
+            </Link>
+
+            <Link
+              href="/"
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/5 text-xs font-semibold tracking-wider text-stone-300 uppercase transition-colors hover:bg-white/10 hover:text-white"
+            >
+              <span>CONTINUE TO HOME</span>
             </Link>
 
             <button
               type="button"
               onClick={handleSignOut}
               disabled={isSigningOut}
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/5 text-xs font-semibold tracking-wider text-stone-300 uppercase transition-colors hover:bg-white/10 hover:text-white disabled:opacity-50"
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-lg border border-red-500/20 bg-red-500/10 text-xs font-semibold tracking-wider text-red-300 uppercase transition-colors hover:bg-red-500/20 disabled:opacity-50"
             >
               {isSigningOut ? (
                 <>
@@ -303,6 +350,90 @@ export default function SignUpPage() {
 
         {/* ── Registration Form ── */}
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Account Role Selector */}
+          <div>
+            <label className="block text-[11px] font-bold tracking-wider text-stone-300 uppercase mb-2">
+              SELECT ACCOUNT TYPE <span className="text-[#C4A265]">*</span>
+            </label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {/* Customer Role */}
+              <button
+                type="button"
+                onClick={() => setFormData((prev) => ({ ...prev, role: "customer" }))}
+                className={cn(
+                  "relative flex flex-col items-start gap-1.5 rounded-xl border p-3.5 text-left transition-all duration-200",
+                  formData.role === "customer"
+                    ? "border-[#C4A265] bg-[#C4A265]/10 text-white shadow-[0_0_15px_rgba(196,162,101,0.15)] ring-1 ring-[#C4A265]"
+                    : "border-white/10 bg-white/5 text-stone-400 hover:border-white/20 hover:text-stone-200"
+                )}
+              >
+                <div className="flex w-full items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div
+                      className={cn(
+                        "flex size-6 items-center justify-center rounded-md",
+                        formData.role === "customer"
+                          ? "bg-[#C4A265] text-stone-950 font-bold"
+                          : "bg-white/10 text-stone-400"
+                      )}
+                    >
+                      <User className="size-3.5" />
+                    </div>
+                    <span className="text-xs font-bold uppercase tracking-wider text-white">
+                      Customer
+                    </span>
+                  </div>
+                  {formData.role === "customer" && (
+                    <span className="flex size-4 items-center justify-center rounded-full bg-[#C4A265] text-stone-950">
+                      <Check className="size-2.5 stroke-[3]" />
+                    </span>
+                  )}
+                </div>
+                <p className="text-[11px] text-stone-400 font-light leading-snug mt-1">
+                  Access Customer Dashboard, self-service appointment ledger & online checkout.
+                </p>
+              </button>
+
+              {/* Admin Role */}
+              <button
+                type="button"
+                onClick={() => setFormData((prev) => ({ ...prev, role: "admin" }))}
+                className={cn(
+                  "relative flex flex-col items-start gap-1.5 rounded-xl border p-3.5 text-left transition-all duration-200",
+                  formData.role === "admin"
+                    ? "border-[#C4A265] bg-[#C4A265]/10 text-white shadow-[0_0_15px_rgba(196,162,101,0.15)] ring-1 ring-[#C4A265]"
+                    : "border-white/10 bg-white/5 text-stone-400 hover:border-white/20 hover:text-stone-200"
+                )}
+              >
+                <div className="flex w-full items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div
+                      className={cn(
+                        "flex size-6 items-center justify-center rounded-md",
+                        formData.role === "admin"
+                          ? "bg-[#C4A265] text-stone-950 font-bold"
+                          : "bg-white/10 text-stone-400"
+                      )}
+                    >
+                      <ShieldCheck className="size-3.5" />
+                    </div>
+                    <span className="text-xs font-bold uppercase tracking-wider text-white">
+                      Administrator
+                    </span>
+                  </div>
+                  {formData.role === "admin" && (
+                    <span className="flex size-4 items-center justify-center rounded-full bg-[#C4A265] text-stone-950">
+                      <Check className="size-2.5 stroke-[3]" />
+                    </span>
+                  )}
+                </div>
+                <p className="text-[11px] text-stone-400 font-light leading-snug mt-1">
+                  Access Admin Control Panel, manage services, users, appointments & finances.
+                </p>
+              </button>
+            </div>
+          </div>
+
           {/* Full Name */}
           <div>
             <label

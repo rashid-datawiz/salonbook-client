@@ -21,10 +21,17 @@ import {
   ChevronDown,
   CalendarCheck,
   ShieldCheck,
+  LayoutDashboard,
+  User,
   Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useSession, signOut } from "@/lib/auth-client";
+import {
+  useSession,
+  signOut,
+  getActiveUserRole,
+  clearUserRolePreference,
+} from "@/lib/auth-client";
 
 /* ─────────────────────────────────────────────────────────────────────────────
    Navbar Component — Luxury Editorial Barbershop / Salon Aesthetic
@@ -81,6 +88,7 @@ export default function Navbar() {
     setUserMenuOpen(false);
     setMobileOpen(false);
     try {
+      clearUserRolePreference();
       await signOut();
       router.push("/");
       router.refresh();
@@ -90,6 +98,9 @@ export default function Navbar() {
       setIsSigningOut(false);
     }
   };
+
+  const userRole = getActiveUserRole(session?.user?.role);
+  const isAdmin = userRole === "admin";
 
   const userInitials = session?.user?.name
     ? session.user.name
@@ -169,7 +180,7 @@ export default function Navbar() {
 
               {/* User Dropdown Menu */}
               {userMenuOpen && (
-                <div className="absolute right-0 mt-2 w-64 rounded-xl border border-white/10 bg-[#1A1815] p-2 shadow-2xl backdrop-blur-xl animate-in fade-in zoom-in-95 duration-150 z-50">
+                <div className="absolute right-0 mt-2 w-72 rounded-xl border border-white/10 bg-[#1A1815] p-2.5 shadow-2xl backdrop-blur-xl animate-in fade-in zoom-in-95 duration-150 z-50">
                   {/* User Info Header */}
                   <div className="p-3 border-b border-white/10">
                     <p className="text-xs font-bold text-white truncate">
@@ -178,35 +189,88 @@ export default function Navbar() {
                     <p className="text-[11px] text-stone-400 truncate mt-0.5">
                       {session.user.email}
                     </p>
-                    <div className="mt-2 inline-flex items-center gap-1 rounded bg-[#C4A265]/15 px-2 py-0.5 text-[10px] font-bold tracking-wider text-[#C4A265] uppercase">
-                      <span>{session.user.role === "admin" ? "Admin" : "Verified Client"}</span>
+                    <div className="mt-2 inline-flex items-center gap-1.5 rounded bg-[#C4A265]/15 px-2 py-0.5 text-[10px] font-bold tracking-wider text-[#C4A265] uppercase">
+                      {isAdmin ? (
+                        <>
+                          <ShieldCheck className="size-3 text-[#C4A265]" />
+                          <span>Administrator</span>
+                        </>
+                      ) : (
+                        <>
+                          <User className="size-3 text-[#C4A265]" />
+                          <span>Verified Client</span>
+                        </>
+                      )}
                     </div>
                   </div>
 
-                  {/* Links */}
-                  <div className="py-1">
-                    <Link
-                      href="/my-appointments"
-                      onClick={() => setUserMenuOpen(false)}
-                      className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium text-stone-300 transition-colors hover:bg-white/5 hover:text-white"
-                    >
-                      <CalendarCheck className="size-4 text-[#C4A265]" />
-                      <span>My Appointments</span>
-                    </Link>
+                  {/* Role-Based Respected Dashboard Links */}
+                  <div className="py-2 space-y-1">
+                    {isAdmin ? (
+                      /* Admin Links */
+                      <>
+                        <Link
+                          href="/dashboard/admin"
+                          onClick={() => setUserMenuOpen(false)}
+                          className="flex items-center gap-3 rounded-lg bg-[#C4A265]/15 border border-[#C4A265]/30 px-3 py-2 text-xs font-semibold text-[#C4A265] transition-all hover:bg-[#C4A265]/25 hover:text-white"
+                        >
+                          <ShieldCheck className="size-4 shrink-0 text-[#C4A265]" />
+                          <div className="flex-1 min-w-0">
+                            <span className="block font-bold">Admin Dashboard</span>
+                            <span className="block text-[10px] font-normal text-stone-400">Operations, services & users</span>
+                          </div>
+                        </Link>
 
-                    {session.user.role === "admin" && (
-                      <Link
-                        href="/admin"
-                        onClick={() => setUserMenuOpen(false)}
-                        className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium text-stone-300 transition-colors hover:bg-white/5 hover:text-white"
-                      >
-                        <ShieldCheck className="size-4 text-[#C4A265]" />
-                        <span>Admin Dashboard</span>
-                      </Link>
+                        <Link
+                          href="/dashboard/customer"
+                          onClick={() => setUserMenuOpen(false)}
+                          className="flex items-center gap-3 rounded-lg px-3 py-2 text-xs font-medium text-stone-300 transition-colors hover:bg-white/5 hover:text-white"
+                        >
+                          <CalendarCheck className="size-4 text-stone-400" />
+                          <div className="flex-1 min-w-0">
+                            <span>Customer View</span>
+                            <span className="block text-[10px] text-stone-500">Preview client portal</span>
+                          </div>
+                        </Link>
+                      </>
+                    ) : (
+                      /* Customer / Client Links */
+                      <>
+                        <Link
+                          href="/dashboard/customer"
+                          onClick={() => setUserMenuOpen(false)}
+                          className="flex items-center gap-3 rounded-lg bg-[#C4A265]/15 border border-[#C4A265]/30 px-3 py-2 text-xs font-semibold text-[#C4A265] transition-all hover:bg-[#C4A265]/25 hover:text-white"
+                        >
+                          <LayoutDashboard className="size-4 shrink-0 text-[#C4A265]" />
+                          <div className="flex-1 min-w-0">
+                            <span className="block font-bold">Customer Dashboard</span>
+                            <span className="block text-[10px] font-normal text-stone-400">KPIs & appointment manager</span>
+                          </div>
+                        </Link>
+
+                        <Link
+                          href="/dashboard/customer?tab=appointments"
+                          onClick={() => setUserMenuOpen(false)}
+                          className="flex items-center gap-3 rounded-lg px-3 py-2 text-xs font-medium text-stone-300 transition-colors hover:bg-white/5 hover:text-white"
+                        >
+                          <CalendarCheck className="size-4 text-[#C4A265]" />
+                          <span>My Appointments</span>
+                        </Link>
+
+                        <Link
+                          href="/dashboard/customer?tab=profile"
+                          onClick={() => setUserMenuOpen(false)}
+                          className="flex items-center gap-3 rounded-lg px-3 py-2 text-xs font-medium text-stone-300 transition-colors hover:bg-white/5 hover:text-white"
+                        >
+                          <User className="size-4 text-stone-400" />
+                          <span>My Profile</span>
+                        </Link>
+                      </>
                     )}
                   </div>
 
-                  <div className="border-t border-white/10 pt-1">
+                  {/* Sign Out Button */}
+                  <div className="border-t border-white/10 pt-1.5">
                     <button
                       type="button"
                       onClick={handleSignOut}
@@ -305,6 +369,19 @@ export default function Navbar() {
                         <p className="text-[11px] text-stone-400 truncate">
                           {session.user.email}
                         </p>
+                        <div className="mt-1 inline-flex items-center gap-1 rounded bg-[#C4A265]/15 px-2 py-0.5 text-[9px] font-bold tracking-wider text-[#C4A265] uppercase">
+                          {isAdmin ? (
+                            <>
+                              <ShieldCheck className="size-2.5 text-[#C4A265]" />
+                              <span>Administrator</span>
+                            </>
+                          ) : (
+                            <>
+                              <User className="size-2.5 text-[#C4A265]" />
+                              <span>Verified Client</span>
+                            </>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -325,24 +402,57 @@ export default function Navbar() {
                     </Link>
                   ))}
 
+                  {/* Respected Dashboard Links in Mobile Navigation */}
                   {session?.user && (
-                    <Link
-                      href="/my-appointments"
-                      onClick={() => setMobileOpen(false)}
-                      className="rounded-md px-3 py-2.5 text-xs font-semibold tracking-wider text-[#C4A265] uppercase transition-colors hover:bg-white/5"
-                    >
-                      My Appointments
-                    </Link>
-                  )}
-
-                  {session?.user?.role === "admin" && (
-                    <Link
-                      href="/admin"
-                      onClick={() => setMobileOpen(false)}
-                      className="rounded-md px-3 py-2.5 text-xs font-semibold tracking-wider text-[#C4A265] uppercase transition-colors hover:bg-white/5"
-                    >
-                      Admin Dashboard
-                    </Link>
+                    <div className="mt-2 pt-2 border-t border-stone-800/80 flex flex-col gap-1">
+                      {isAdmin ? (
+                        <>
+                          <Link
+                            href="/dashboard/admin"
+                            onClick={() => setMobileOpen(false)}
+                            className="flex items-center gap-2.5 rounded-md bg-[#C4A265]/15 px-3 py-2.5 text-xs font-bold tracking-wider text-[#C4A265] uppercase transition-colors hover:bg-[#C4A265]/25"
+                          >
+                            <ShieldCheck className="size-4" />
+                            <span>Admin Dashboard</span>
+                          </Link>
+                          <Link
+                            href="/dashboard/customer"
+                            onClick={() => setMobileOpen(false)}
+                            className="flex items-center gap-2.5 rounded-md px-3 py-2 text-xs font-semibold tracking-wider text-stone-300 uppercase transition-colors hover:bg-white/5 hover:text-white"
+                          >
+                            <CalendarCheck className="size-4 text-stone-400" />
+                            <span>Customer View</span>
+                          </Link>
+                        </>
+                      ) : (
+                        <>
+                          <Link
+                            href="/dashboard/customer"
+                            onClick={() => setMobileOpen(false)}
+                            className="flex items-center gap-2.5 rounded-md bg-[#C4A265]/15 px-3 py-2.5 text-xs font-bold tracking-wider text-[#C4A265] uppercase transition-colors hover:bg-[#C4A265]/25"
+                          >
+                            <LayoutDashboard className="size-4" />
+                            <span>Customer Dashboard</span>
+                          </Link>
+                          <Link
+                            href="/dashboard/customer?tab=appointments"
+                            onClick={() => setMobileOpen(false)}
+                            className="flex items-center gap-2.5 rounded-md px-3 py-2 text-xs font-semibold tracking-wider text-stone-300 uppercase transition-colors hover:bg-white/5 hover:text-white"
+                          >
+                            <CalendarCheck className="size-4 text-[#C4A265]" />
+                            <span>My Appointments</span>
+                          </Link>
+                          <Link
+                            href="/dashboard/customer?tab=profile"
+                            onClick={() => setMobileOpen(false)}
+                            className="flex items-center gap-2.5 rounded-md px-3 py-2 text-xs font-semibold tracking-wider text-stone-300 uppercase transition-colors hover:bg-white/5 hover:text-white"
+                          >
+                            <User className="size-4 text-stone-400" />
+                            <span>My Profile</span>
+                          </Link>
+                        </>
+                      )}
+                    </div>
                   )}
                 </nav>
 

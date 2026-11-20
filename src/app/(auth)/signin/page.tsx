@@ -14,8 +14,15 @@ import {
   AlertCircle,
   LogOut,
   User,
+  ShieldCheck,
 } from "lucide-react";
-import { signIn, signOut, useSession } from "@/lib/auth-client";
+import {
+  signIn,
+  signOut,
+  useSession,
+  getActiveUserRole,
+  clearUserRolePreference,
+} from "@/lib/auth-client";
 
 /* ─────────────────────────────────────────────────────────────────────────────
    SignInPage Component
@@ -59,9 +66,9 @@ export default function SignInPage() {
         return;
       }
 
-      setSuccessMessage("Authenticated successfully! Redirecting...");
+      setSuccessMessage("Authenticated successfully! Routing to your dashboard...");
       setTimeout(() => {
-        router.push("/");
+        router.push("/dashboard");
         router.refresh();
       }, 500);
     } catch (err) {
@@ -106,6 +113,7 @@ export default function SignInPage() {
     setIsSigningOut(true);
     setErrorMessage(null);
     try {
+      clearUserRolePreference();
       await signOut();
       router.refresh();
     } catch (err) {
@@ -117,6 +125,10 @@ export default function SignInPage() {
 
   /* ── If User is Already Signed In ── */
   if (!isSessionPending && session?.user) {
+    const activeRole = getActiveUserRole(session.user.role);
+    const targetDashboard =
+      activeRole === "admin" ? "/dashboard/admin" : "/dashboard/customer";
+
     return (
       <div className="w-full max-w-md">
         <div className="rounded-2xl border border-white/10 bg-[#181614]/95 p-7 sm:p-9 shadow-2xl backdrop-blur-md text-center">
@@ -136,6 +148,19 @@ export default function SignInPage() {
               {session.user.name || session.user.email}
             </strong>
           </p>
+          <div className="mt-2 inline-flex items-center gap-1.5 rounded bg-[#C4A265]/15 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider text-[#C4A265]">
+            {activeRole === "admin" ? (
+              <>
+                <ShieldCheck className="size-3 text-[#C4A265]" />
+                <span>Administrator</span>
+              </>
+            ) : (
+              <>
+                <User className="size-3 text-[#C4A265]" />
+                <span>Verified Client</span>
+              </>
+            )}
+          </div>
 
           {errorMessage && (
             <div
@@ -149,18 +174,25 @@ export default function SignInPage() {
 
           <div className="mt-8 flex flex-col gap-3">
             <Link
-              href="/"
+              href={targetDashboard}
               className="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-[#C4A265] px-6 text-xs font-bold tracking-widest text-stone-950 uppercase transition-all hover:bg-[#B39154]"
             >
-              <span>CONTINUE TO SALONBOOK</span>
+              <span>{activeRole === "admin" ? "GO TO ADMIN DASHBOARD" : "GO TO CUSTOMER DASHBOARD"}</span>
               <ArrowRight className="size-3.5" />
+            </Link>
+
+            <Link
+              href="/"
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/5 text-xs font-semibold tracking-wider text-stone-300 uppercase transition-colors hover:bg-white/10 hover:text-white"
+            >
+              <span>CONTINUE TO HOME</span>
             </Link>
 
             <button
               type="button"
               onClick={handleSignOut}
               disabled={isSigningOut}
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/5 text-xs font-semibold tracking-wider text-stone-300 uppercase transition-colors hover:bg-white/10 hover:text-white disabled:opacity-50"
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-lg border border-red-500/20 bg-red-500/10 text-xs font-semibold tracking-wider text-red-300 uppercase transition-colors hover:bg-red-500/20 disabled:opacity-50"
             >
               {isSigningOut ? (
                 <>
