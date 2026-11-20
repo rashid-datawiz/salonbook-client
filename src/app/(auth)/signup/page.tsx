@@ -2,16 +2,33 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { User, Mail, Phone, Image as ImageIcon, Lock, Eye, EyeOff, ArrowRight, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
-import { signUp } from "@/lib/auth-client";
+import { useRouter } from "next/navigation";
+import {
+  User,
+  Mail,
+  Phone,
+  Image as ImageIcon,
+  Lock,
+  Eye,
+  EyeOff,
+  ArrowRight,
+  Loader2,
+  CheckCircle2,
+  AlertCircle,
+  LogOut,
+} from "lucide-react";
+import { signUp, signIn, signOut, useSession } from "@/lib/auth-client";
 
 /* ─────────────────────────────────────────────────────────────────────────────
    SignUpPage Component
    Modern luxury client registration UI for SalonBook.
-   Static frontend implementation ready for Better Auth / NextAuth integration.
+   Fully wired to Better Auth signUp.email and signIn.social with session awareness.
    ───────────────────────────────────────────────────────────────────────────── */
 
 export default function SignUpPage() {
+  const router = useRouter();
+  const { data: session, isPending: isSessionPending } = useSession();
+
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -25,8 +42,9 @@ export default function SignUpPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isSigningOut, setIsSigningOut] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [submittedStatus, setSubmittedStatus] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   /* ── Form Field Change Handler ── */
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -42,7 +60,7 @@ export default function SignUpPage() {
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setErrorMessage(null);
-    setSubmittedStatus(null);
+    setSuccessMessage(null);
 
     // Validation: Passwords match
     if (formData.password !== formData.confirmPassword) {
@@ -52,7 +70,7 @@ export default function SignUpPage() {
 
     // Validation: Password length
     if (formData.password.length < 8) {
-      setErrorMessage("Password must be at least 8 characters.");
+      setErrorMessage("Password must be at least 8 characters long.");
       return;
     }
 
@@ -64,43 +82,131 @@ export default function SignUpPage() {
 
     setIsLoading(true);
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // TODO: Connect Better Auth / NextAuth registration here:
-    const { error } = await signUp.email({
-       name: formData.name,
-       email: formData.email,
-       password: formData.password,
-       image: formData.image || undefined,
-       callbackURL: "/",
-    });
-    if (error) {
-      setIsLoading(false);
-      setErrorMessage(error.message || "Unable to create your account.");
-      return;
-    }
-    // ─────────────────────────────────────────────────────────────────────────
+    try {
+      const { error } = await signUp.email({
+        name: formData.name,
+        email: formData.email,
+        password: formData.password,
+        image: formData.image || undefined,
+        callbackURL: "/",
+      });
 
-    // Simulating authentication response for frontend demonstration
-    setTimeout(() => {
-      setIsLoading(false);
-      setSubmittedStatus(
-        `Welcome, ${formData.name}! Your SalonBook account has been initialized.`
+      if (error) {
+        setIsLoading(false);
+        setErrorMessage(error.message || "Unable to create your account. Please try again.");
+        return;
+      }
+
+      setSuccessMessage(
+        `Welcome, ${formData.name}! Your account has been created. Redirecting...`
       );
-    }, 1000);
+
+      setTimeout(() => {
+        router.push("/");
+        router.refresh();
+      }, 700);
+    } catch (err) {
+      setIsLoading(false);
+      setErrorMessage(
+        err instanceof Error ? err.message : "Registration failed. Please try again."
+      );
+    }
   };
 
   /* ── Social Login Handler ── */
-  const handleSocialSignUp = (provider: "google" | "github") => {
+  const handleSocialSignUp = async (provider: "google" | "github") => {
     setIsLoading(true);
-    // ─────────────────────────────────────────────────────────────────────────
-    // TODO: Connect Better Auth social provider here:
-    // await authClient.signIn.social({ provider });
-    // ─────────────────────────────────────────────────────────────────────────
-    setTimeout(() => {
+    setErrorMessage(null);
+    setSuccessMessage(null);
+
+    try {
+      if (provider === "github") {
+        await signIn.social({
+          provider: "github",
+          callbackURL: "/",
+        });
+      } else {
+        setErrorMessage(
+          "Google registration is not yet configured. Please register with Email or GitHub."
+        );
+        setIsLoading(false);
+      }
+    } catch (err) {
       setIsLoading(false);
-      setSubmittedStatus(`Redirecting to ${provider} registration...`);
-    }, 600);
+      setErrorMessage(
+        err instanceof Error ? err.message : "Social registration failed. Please try again."
+      );
+    }
   };
+
+  /* ── Sign Out Handler (If already signed in) ── */
+  const handleSignOut = async () => {
+    setIsSigningOut(true);
+    setErrorMessage(null);
+    try {
+      await signOut();
+      router.refresh();
+    } catch (err) {
+      setErrorMessage(err instanceof Error ? err.message : "Failed to sign out.");
+    } finally {
+      setIsSigningOut(false);
+    }
+  };
+
+  /* ── If User is Already Signed In ── */
+  if (!isSessionPending && session?.user) {
+    return (
+      <div className="w-full max-w-md">
+        <div className="rounded-2xl border border-white/10 bg-[#181614]/95 p-7 sm:p-9 shadow-2xl backdrop-blur-md text-center">
+          <div className="mx-auto flex size-14 items-center justify-center rounded-full bg-[#C4A265]/15 text-[#C4A265] border border-[#C4A265]/30 mb-5">
+            <User className="size-6" />
+          </div>
+
+          <span className="text-[11px] font-bold tracking-[0.25em] text-[#C4A265] uppercase">
+            ACTIVE SESSION
+          </span>
+          <h1 className="mt-2 font-heading text-2xl font-bold tracking-wider text-white uppercase">
+            ALREADY SIGNED IN
+          </h1>
+          <p className="mt-2 text-xs sm:text-sm text-stone-300 font-light leading-relaxed">
+            You are signed in as{" "}
+            <strong className="font-semibold text-white">
+              {session.user.name || session.user.email}
+            </strong>
+          </p>
+
+          <div className="mt-8 flex flex-col gap-3">
+            <Link
+              href="/"
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-[#C4A265] px-6 text-xs font-bold tracking-widest text-stone-950 uppercase transition-all hover:bg-[#B39154]"
+            >
+              <span>CONTINUE TO SALONBOOK</span>
+              <ArrowRight className="size-3.5" />
+            </Link>
+
+            <button
+              type="button"
+              onClick={handleSignOut}
+              disabled={isSigningOut}
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/5 text-xs font-semibold tracking-wider text-stone-300 uppercase transition-colors hover:bg-white/10 hover:text-white disabled:opacity-50"
+            >
+              {isSigningOut ? (
+                <>
+                  <Loader2 className="size-3.5 animate-spin" />
+                  <span>SIGNING OUT...</span>
+                </>
+              ) : (
+                <>
+                  <LogOut className="size-3.5" />
+                  <span>SIGN OUT CURRENT ACCOUNT</span>
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full max-w-lg">
@@ -121,16 +227,19 @@ export default function SignUpPage() {
         </div>
 
         {/* Success Status Banner */}
-        {submittedStatus && (
+        {successMessage && (
           <div className="mb-6 flex items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3.5 text-xs text-emerald-300">
             <CheckCircle2 className="size-4 shrink-0 text-emerald-400" />
-            <span>{submittedStatus}</span>
+            <span>{successMessage}</span>
           </div>
         )}
 
         {/* Error Banner */}
         {errorMessage && (
-          <div className="mb-6 flex items-center gap-2 rounded-lg border border-red-500/30 bg-red-500/10 p-3.5 text-xs text-red-300">
+          <div
+            role="alert"
+            className="mb-6 flex items-center gap-2 rounded-lg border border-red-500/30 bg-red-500/10 p-3.5 text-xs text-red-300"
+          >
             <AlertCircle className="size-4 shrink-0 text-red-400" />
             <span>{errorMessage}</span>
           </div>
@@ -265,13 +374,13 @@ export default function SignUpPage() {
             </div>
           </div>
 
-          {/* Profile Image */}
+          {/* Profile Image URL */}
           <div>
             <label
               htmlFor="image"
               className="block text-[11px] font-bold tracking-wider text-stone-300 uppercase mb-1.5"
             >
-              PROFILE IMAGE URL
+              PROFILE IMAGE URL (OPTIONAL)
             </label>
             <div className="relative">
               <ImageIcon className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-stone-500" />
@@ -280,7 +389,7 @@ export default function SignUpPage() {
                 name="image"
                 type="url"
                 autoComplete="url"
-                placeholder="https://example.com/profile.jpg"
+                placeholder="https://images.unsplash.com/..."
                 value={formData.image}
                 onChange={handleChange}
                 className="w-full rounded-lg border border-white/10 bg-white/5 py-2.5 pl-10 pr-4 text-sm text-white placeholder:text-stone-500 transition-colors focus:border-[#C4A265] focus:bg-black/20 focus:outline-none"
