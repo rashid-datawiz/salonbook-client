@@ -77,6 +77,7 @@ export default function SignInPage() {
           ? err.message
           : "Unable to connect to the authentication service. Please try again."
       );
+    } finally {
       setIsLoading(false);
     }
   };

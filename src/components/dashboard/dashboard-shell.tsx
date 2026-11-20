@@ -15,11 +15,10 @@ import {
   ArrowLeft,
   Menu,
   X,
-  Shield,
   Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { signOut, useSession } from "@/lib/auth-client";
+import { signOut, useSession, clearUserRolePreference } from "@/lib/auth-client";
 
 /* ─────────────────────────────────────────────────────────────────────────────
    DashboardShell Component
@@ -80,11 +79,13 @@ export default function DashboardShell({
   const handleSignOut = async () => {
     setIsSigningOut(true);
     try {
+      clearUserRolePreference();
       await signOut();
       router.push("/signin");
       router.refresh();
     } catch (err) {
       console.error("Sign out failed", err);
+    } finally {
       setIsSigningOut(false);
     }
   };
@@ -153,15 +154,6 @@ export default function DashboardShell({
 
         {/* User Context & Sign Out */}
         <div className="flex items-center gap-3">
-          {/* Quick role-switch link for tester convenience */}
-          <Link
-            href={role === "admin" ? "/dashboard/customer" : "/dashboard/admin"}
-            className="hidden md:inline-flex items-center gap-1.5 rounded-full border border-[#C4A265]/40 bg-[#C4A265]/10 px-3 py-1 text-[10px] font-bold tracking-wider text-[#C4A265] uppercase hover:bg-[#C4A265]/20 transition-colors"
-          >
-            <Shield className="size-3" />
-            <span>Switch to {role === "admin" ? "Customer" : "Admin"} View</span>
-          </Link>
-
           {/* User profile capsule */}
           <div className="flex items-center gap-2 sm:gap-2.5">
             <div className="flex size-8 items-center justify-center rounded-full bg-[#C4A265] text-xs font-bold text-stone-950 shadow-xs">
@@ -350,14 +342,6 @@ export default function DashboardShell({
                 >
                   <ArrowLeft className="size-3.5" />
                   <span>Return to Homepage</span>
-                </Link>
-
-                <Link
-                  href={role === "admin" ? "/dashboard/customer" : "/dashboard/admin"}
-                  className="flex items-center gap-2 text-[#C4A265] font-semibold px-2 py-1.5"
-                >
-                  <Shield className="size-3.5" />
-                  <span>Switch to {role === "admin" ? "Customer" : "Admin"}</span>
                 </Link>
               </div>
             </div>

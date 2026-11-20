@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import DashboardShell from "@/components/dashboard/dashboard-shell";
 import { cn } from "@/lib/utils";
-import { useSession } from "@/lib/auth-client";
+import { useSession, getActiveUserRole } from "@/lib/auth-client";
 
 /* ─────────────────────────────────────────────────────────────────────────────
    Customer Appointment Type
@@ -122,10 +122,17 @@ export default function CustomerDashboardPage() {
   const router = useRouter();
   const { data: session, isPending: isSessionPending } = useSession();
 
-  // Authentication check: unauthenticated visitors are redirected to sign in
+  // Strict Role Protection: Admins are redirected to /dashboard/admin, guests to /signin
   useEffect(() => {
-    if (!isSessionPending && !session?.user) {
-      router.replace("/signin");
+    if (!isSessionPending) {
+      if (!session?.user) {
+        router.replace("/signin");
+      } else {
+        const role = getActiveUserRole(session.user.role);
+        if (role === "admin") {
+          router.replace("/dashboard/admin");
+        }
+      }
     }
   }, [session, isSessionPending, router]);
 
@@ -217,12 +224,15 @@ export default function CustomerDashboardPage() {
     );
   }
 
-  if (!session?.user) {
+  const activeRole = getActiveUserRole(session?.user?.role);
+  if (!session?.user || activeRole === "admin") {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-[#F4F6F8] dark:bg-[#12100E] text-stone-900 dark:text-stone-100 gap-3 p-4">
         <Loader2 className="size-8 animate-spin text-[#C4A265]" />
         <p className="font-mono text-xs uppercase tracking-wider text-stone-500">
-          Redirecting to sign in...
+          {activeRole === "admin"
+            ? "Redirecting administrator to Admin Control Panel..."
+            : "Redirecting to sign in..."}
         </p>
       </div>
     );

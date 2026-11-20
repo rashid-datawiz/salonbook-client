@@ -95,13 +95,11 @@ export default function SignUpPage() {
     setIsLoading(true);
 
     try {
-      // 1. Immediately cache the chosen role for instant client reactivity & fallback
       setUserRolePreference(formData.role);
 
       const targetDashboard =
         formData.role === "admin" ? "/dashboard/admin" : "/dashboard/customer";
 
-      // 2. Submit to Better Auth with the explicit role
       const { error } = await signUp.email({
         name: formData.name,
         email: formData.email,
@@ -109,7 +107,7 @@ export default function SignUpPage() {
         image: formData.image || undefined,
         role: formData.role,
         callbackURL: targetDashboard,
-      } as Parameters<typeof signUp.email>[0] & { role?: string });
+      });
 
       if (error) {
         setIsLoading(false);
@@ -123,6 +121,18 @@ export default function SignUpPage() {
         } account has been created. Routing to your dashboard...`
       );
 
+      // Reset form data so inputs do not persist
+      setFormData({
+        name: "",
+        email: "",
+        phone: "",
+        image: "",
+        password: "",
+        confirmPassword: "",
+        role: "customer",
+        agreeTerms: true,
+      });
+
       setTimeout(() => {
         router.push(targetDashboard);
         router.refresh();
@@ -132,6 +142,8 @@ export default function SignUpPage() {
       setErrorMessage(
         err instanceof Error ? err.message : "Registration failed. Please try again."
       );
+    } finally {
+      setIsLoading(false);
     }
   };
 

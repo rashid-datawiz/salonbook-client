@@ -208,31 +208,17 @@ export default function Navbar() {
                   <div className="py-2 space-y-1">
                     {isAdmin ? (
                       /* Admin Links */
-                      <>
-                        <Link
-                          href="/dashboard/admin"
-                          onClick={() => setUserMenuOpen(false)}
-                          className="flex items-center gap-3 rounded-lg bg-[#C4A265]/15 border border-[#C4A265]/30 px-3 py-2 text-xs font-semibold text-[#C4A265] transition-all hover:bg-[#C4A265]/25 hover:text-white"
-                        >
-                          <ShieldCheck className="size-4 shrink-0 text-[#C4A265]" />
-                          <div className="flex-1 min-w-0">
-                            <span className="block font-bold">Admin Dashboard</span>
-                            <span className="block text-[10px] font-normal text-stone-400">Operations, services & users</span>
-                          </div>
-                        </Link>
-
-                        <Link
-                          href="/dashboard/customer"
-                          onClick={() => setUserMenuOpen(false)}
-                          className="flex items-center gap-3 rounded-lg px-3 py-2 text-xs font-medium text-stone-300 transition-colors hover:bg-white/5 hover:text-white"
-                        >
-                          <CalendarCheck className="size-4 text-stone-400" />
-                          <div className="flex-1 min-w-0">
-                            <span>Customer View</span>
-                            <span className="block text-[10px] text-stone-500">Preview client portal</span>
-                          </div>
-                        </Link>
-                      </>
+                      <Link
+                        href="/dashboard/admin"
+                        onClick={() => setUserMenuOpen(false)}
+                        className="flex items-center gap-3 rounded-lg bg-[#C4A265]/15 border border-[#C4A265]/30 px-3 py-2 text-xs font-semibold text-[#C4A265] transition-all hover:bg-[#C4A265]/25 hover:text-white"
+                      >
+                        <ShieldCheck className="size-4 shrink-0 text-[#C4A265]" />
+                        <div className="flex-1 min-w-0">
+                          <span className="block font-bold">Admin Dashboard</span>
+                          <span className="block text-[10px] font-normal text-stone-400">Operations, services & users</span>
+                        </div>
+                      </Link>
                     ) : (
                       /* Customer / Client Links */
                       <>
@@ -406,24 +392,14 @@ export default function Navbar() {
                   {session?.user && (
                     <div className="mt-2 pt-2 border-t border-stone-800/80 flex flex-col gap-1">
                       {isAdmin ? (
-                        <>
-                          <Link
-                            href="/dashboard/admin"
-                            onClick={() => setMobileOpen(false)}
-                            className="flex items-center gap-2.5 rounded-md bg-[#C4A265]/15 px-3 py-2.5 text-xs font-bold tracking-wider text-[#C4A265] uppercase transition-colors hover:bg-[#C4A265]/25"
-                          >
-                            <ShieldCheck className="size-4" />
-                            <span>Admin Dashboard</span>
-                          </Link>
-                          <Link
-                            href="/dashboard/customer"
-                            onClick={() => setMobileOpen(false)}
-                            className="flex items-center gap-2.5 rounded-md px-3 py-2 text-xs font-semibold tracking-wider text-stone-300 uppercase transition-colors hover:bg-white/5 hover:text-white"
-                          >
-                            <CalendarCheck className="size-4 text-stone-400" />
-                            <span>Customer View</span>
-                          </Link>
-                        </>
+                        <Link
+                          href="/dashboard/admin"
+                          onClick={() => setMobileOpen(false)}
+                          className="flex items-center gap-2.5 rounded-md bg-[#C4A265]/15 px-3 py-2.5 text-xs font-bold tracking-wider text-[#C4A265] uppercase transition-colors hover:bg-[#C4A265]/25"
+                        >
+                          <ShieldCheck className="size-4" />
+                          <span>Admin Dashboard</span>
+                        </Link>
                       ) : (
                         <>
                           <Link

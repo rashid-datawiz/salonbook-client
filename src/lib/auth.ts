@@ -3,7 +3,10 @@ import { MongoClient } from "mongodb";
 import { mongodbAdapter } from "@better-auth/mongo-adapter";
 
 const uri = process.env.DB_URI || "mongodb://localhost:27017/a9-salonbook";
-const client = new MongoClient(uri);
+const client = new MongoClient(uri, {
+  serverSelectionTimeoutMS: 2000,
+  connectTimeoutMS: 2000,
+});
 const db = client.db("a9-salonbook");
 
 export const auth = betterAuth({
