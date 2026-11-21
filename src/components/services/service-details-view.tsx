@@ -24,6 +24,7 @@ import {
 import { Service } from "@/data/services";
 import { useSession } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
+import { createBackendAppointment } from "@/lib/api";
 
 /* ─────────────────────────────────────────────────────────────────────────────
    Predefined Salon Time Slots (Assignment Doc Specification)
@@ -144,10 +145,22 @@ export default function ServiceDetailsView({ service }: ServiceDetailsViewProps)
     setIsSubmitting(true);
 
     try {
-      // Simulate booking creation with simulated network delay
-      await new Promise((resolve) => setTimeout(resolve, 800));
+      // Call backend to store in MongoDB
+      const res = await createBackendAppointment(
+        {
+          serviceId: service.id,
+          serviceName: service.name,
+          servicePrice: service.price,
+          category: service.category,
+          image: service.image,
+          appointmentDate: targetDate,
+          timeSlot: selectedTimeSlot,
+          message: additionalMessage.trim(),
+        },
+        session?.user
+      );
 
-      const newAppointmentId = `apt-${Date.now().toString().slice(-4)}`;
+      const newAppointmentId = res.appointment?._id || `apt-${Date.now().toString().slice(-4)}`;
 
       // Save appointment to client storage for persistence across customer dashboard
       if (typeof window !== "undefined") {
@@ -179,8 +192,9 @@ export default function ServiceDetailsView({ service }: ServiceDetailsViewProps)
         date: targetDate,
         time: selectedTimeSlot,
       });
-    } catch {
-      setErrorMessage("Unable to submit appointment request. Please try again.");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Unable to submit appointment request. Please try again.";
+      setErrorMessage(message);
     } finally {
       setIsSubmitting(false);
     }

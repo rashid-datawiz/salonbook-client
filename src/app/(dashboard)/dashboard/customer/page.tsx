@@ -18,6 +18,7 @@ import {
 import DashboardShell from "@/components/dashboard/dashboard-shell";
 import { cn } from "@/lib/utils";
 import { useSession, getActiveUserRole } from "@/lib/auth-client";
+import { getCustomerAppointments, cancelCustomerAppointment } from "@/lib/api";
 
 /* ─────────────────────────────────────────────────────────────────────────────
    Customer Appointment Type
@@ -157,6 +158,54 @@ export default function CustomerDashboardPage() {
   });
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
+  // Load appointments directly from backend MongoDB
+  useEffect(() => {
+    let isMounted = true;
+    async function loadCustomerAppointments() {
+      try {
+        const raw = await getCustomerAppointments(session?.user);
+        if (isMounted && Array.isArray(raw) && raw.length > 0) {
+          const mapped: CustomerAppointment[] = raw.map((b: {
+            _id: string;
+            serviceId?: string;
+            service?: { serviceName?: string; category?: string; image?: string };
+            appointmentDate?: string;
+            timeSlot?: string;
+            servicePrice?: number;
+            createdAt?: string;
+            status?: string;
+            paymentStatus?: string;
+            message?: string;
+          }) => ({
+            id: String(b._id),
+            serviceName: b.service?.serviceName || "Salon Service",
+            category: b.service?.category || "Service",
+            image:
+              b.service?.image ||
+              "https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=400&h=300&fit=crop&q=80",
+            date: b.appointmentDate || "",
+            time: b.timeSlot || "",
+            requestDate: b.createdAt ? new Date(b.createdAt).toISOString().split("T")[0] : "",
+            price: Number(b.servicePrice) || 0,
+            status: (b.status
+              ? b.status.charAt(0).toUpperCase() + b.status.slice(1)
+              : "Pending") as AppointmentStatus,
+            payment: (b.paymentStatus === "paid" ? "Paid" : "Unpaid") as PaymentStatus,
+            stylist: "Master Artisan",
+            notes: b.message,
+          }));
+          setAppointments(mapped);
+        }
+      } catch (err) {
+        console.error("Failed to load customer backend appointments:", err);
+      }
+    }
+    loadCustomerAppointments();
+    return () => {
+      isMounted = false;
+    };
+  }, [session?.user]);
+
   // Interactive Modal States
   const [cancelModalAppointment, setCancelModalAppointment] = useState<CustomerAppointment | null>(null);
   const [cancelReason, setCancelReason] = useState("");
@@ -192,8 +241,13 @@ export default function CustomerDashboardPage() {
   });
 
   // Action: Confirm Cancellation
-  const handleConfirmCancel = () => {
+  const handleConfirmCancel = async () => {
     if (!cancelModalAppointment) return;
+    try {
+      await cancelCustomerAppointment(cancelModalAppointment.id, session?.user);
+    } catch (err) {
+      console.warn("Backend cancellation error:", err);
+    }
     setAppointments((prev) =>
       prev.map((item) =>
         item.id === cancelModalAppointment.id

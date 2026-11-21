@@ -1,10 +1,11 @@
+import { Suspense } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import Navbar from "@/components/shared/navbar";
 import Footer from "@/components/shared/footer";
 import ServiceDetailsView from "@/components/services/service-details-view";
 import { ALL_SERVICES, getServiceById } from "@/data/services";
-import { ArrowLeft, Search } from "lucide-react";
+import { ArrowLeft, Search, Loader2 } from "lucide-react";
 
 interface ServicePageProps {
   params: Promise<{ id: string }>;
@@ -35,45 +36,64 @@ export async function generateMetadata({
   };
 }
 
-export default async function ServiceDetailsPage({
+async function ServiceDetailsContent({
   params,
-}: ServicePageProps) {
+}: {
+  params: Promise<{ id: string }>;
+}) {
   const { id } = await params;
   const service = getServiceById(id);
 
   if (!service) {
     return (
-      <>
-        <Navbar />
-        <main className="min-h-[70vh] flex flex-col items-center justify-center p-8 text-center bg-[#FDFBF7] dark:bg-[#12100E]">
-          <div className="mx-auto flex size-14 items-center justify-center rounded-full bg-red-500/10 text-red-500 border border-red-500/20 mb-4">
-            <Search className="size-6" />
-          </div>
-          <h1 className="font-heading text-2xl font-bold uppercase tracking-wider text-stone-900 dark:text-stone-100">
-            Service Not Found
-          </h1>
-          <p className="mt-2 text-xs sm:text-sm text-stone-500 dark:text-stone-400 max-w-md">
-            The service reference &ldquo;{id}&rdquo; was not found in our catalog or may have been retired.
-          </p>
-          <Link
-            href="/services"
-            className="mt-6 inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-[#C4A265] px-6 text-xs font-bold tracking-wider text-stone-950 uppercase transition-all hover:bg-[#B39154]"
-          >
-            <ArrowLeft className="size-3.5" />
-            <span>Browse All Available Services</span>
-          </Link>
-        </main>
-        <Footer />
-      </>
+      <main className="min-h-[70vh] flex flex-col items-center justify-center p-8 text-center bg-[#FDFBF7] dark:bg-[#12100E]">
+        <div className="mx-auto flex size-14 items-center justify-center rounded-full bg-red-500/10 text-red-500 border border-red-500/20 mb-4">
+          <Search className="size-6" />
+        </div>
+        <h1 className="font-heading text-2xl font-bold uppercase tracking-wider text-stone-900 dark:text-stone-100">
+          Service Not Found
+        </h1>
+        <p className="mt-2 text-xs sm:text-sm text-stone-500 dark:text-stone-400 max-w-md">
+          The service reference &ldquo;{id}&rdquo; was not found in our catalog or may have been retired.
+        </p>
+        <Link
+          href="/services"
+          className="mt-6 inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-[#C4A265] px-6 text-xs font-bold tracking-wider text-stone-950 uppercase transition-all hover:bg-[#B39154]"
+        >
+          <ArrowLeft className="size-3.5" />
+          <span>Browse All Available Services</span>
+        </Link>
+      </main>
     );
   }
 
   return (
+    <main className="flex-1">
+      <ServiceDetailsView service={service} />
+    </main>
+  );
+}
+
+function ServiceLoadingFallback() {
+  return (
+    <div className="min-h-[70vh] flex flex-col items-center justify-center bg-[#FDFBF7] dark:bg-[#12100E]">
+      <Loader2 className="size-8 animate-spin text-[#C4A265]" />
+      <p className="mt-4 text-xs font-medium uppercase tracking-widest text-stone-500">
+        Loading service details...
+      </p>
+    </div>
+  );
+}
+
+export default function ServiceDetailsPage({
+  params,
+}: ServicePageProps) {
+  return (
     <>
       <Navbar />
-      <main className="flex-1">
-        <ServiceDetailsView service={service} />
-      </main>
+      <Suspense fallback={<ServiceLoadingFallback />}>
+        <ServiceDetailsContent params={params} />
+      </Suspense>
       <Footer />
     </>
   );

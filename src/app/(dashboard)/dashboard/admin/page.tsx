@@ -24,6 +24,7 @@ import {
 import DashboardShell from "@/components/dashboard/dashboard-shell";
 import { cn } from "@/lib/utils";
 import { useSession, getActiveUserRole } from "@/lib/auth-client";
+import { getAdminAppointments, updateAdminAppointmentStatus } from "@/lib/api";
 
 /* ─────────────────────────────────────────────────────────────────────────────
    Admin Data Models (Adhering to Blueprint Section 2 Wireframe Specifications)
@@ -341,6 +342,51 @@ export default function AdminDashboardPage() {
   const [users, setUsers] = useState<CustomerUser[]>(INITIAL_USERS);
   const [transactions] = useState<StripeTransaction[]>(INITIAL_TRANSACTIONS);
 
+  // Synchronize appointments with backend MongoDB
+  useEffect(() => {
+    let isMounted = true;
+    async function loadBackendAppointments() {
+      try {
+        const raw = await getAdminAppointments(session?.user);
+        if (isMounted && Array.isArray(raw) && raw.length > 0) {
+          const mapped: AdminAppointment[] = raw.map((b: {
+            _id: string;
+            customer?: { name?: string; email?: string; phone?: string };
+            service?: { serviceName?: string; category?: string };
+            appointmentDate?: string;
+            timeSlot?: string;
+            servicePrice?: number;
+            message?: string;
+            status?: string;
+            paymentStatus?: string;
+          }) => ({
+            id: String(b._id),
+            customerName: b.customer?.name || "Customer",
+            customerEmail: b.customer?.email || "",
+            customerPhone: b.customer?.phone || "N/A",
+            serviceName: b.service?.serviceName || "Salon Service",
+            category: b.service?.category || "Service",
+            date: b.appointmentDate || "",
+            time: b.timeSlot || "",
+            price: Number(b.servicePrice) || 0,
+            message: b.message || "",
+            status: (b.status
+              ? b.status.charAt(0).toUpperCase() + b.status.slice(1)
+              : "Pending") as "Pending" | "Confirmed" | "Cancelled",
+            payment: (b.paymentStatus === "paid" ? "Paid" : "Unpaid") as "Paid" | "Unpaid",
+          }));
+          setAppointments(mapped);
+        }
+      } catch (err) {
+        console.error("Failed to load backend admin appointments:", err);
+      }
+    }
+    loadBackendAppointments();
+    return () => {
+      isMounted = false;
+    };
+  }, [session?.user]);
+
   // Search & Filter
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -439,14 +485,24 @@ export default function AdminDashboardPage() {
   };
 
   // Confirm Appointment Action
-  const handleConfirmAppointment = (id: string) => {
+  const handleConfirmAppointment = async (id: string) => {
+    try {
+      await updateAdminAppointmentStatus(id, "confirmed", session?.user);
+    } catch (err) {
+      console.warn("Backend status update error:", err);
+    }
     setAppointments((prev) =>
       prev.map((a) => (a.id === id ? { ...a, status: "Confirmed" } : a))
     );
   };
 
   // Cancel Appointment Action
-  const handleCancelAppointment = (id: string) => {
+  const handleCancelAppointment = async (id: string) => {
+    try {
+      await updateAdminAppointmentStatus(id, "cancelled", session?.user);
+    } catch (err) {
+      console.warn("Backend status update error:", err);
+    }
     setAppointments((prev) =>
       prev.map((a) => (a.id === id ? { ...a, status: "Cancelled" } : a))
     );

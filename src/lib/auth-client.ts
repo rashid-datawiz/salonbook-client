@@ -44,6 +44,7 @@ export function clearUserRolePreference() {
   if (typeof window !== "undefined") {
     localStorage.removeItem("salonbook_user_role");
     localStorage.removeItem("salonbook_client_session");
+    localStorage.removeItem("salonbook_token");
   }
 }
 
