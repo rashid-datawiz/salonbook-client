@@ -24,7 +24,12 @@ import {
 import DashboardShell from "@/components/dashboard/dashboard-shell";
 import { cn } from "@/lib/utils";
 import { useSession, getActiveUserRole } from "@/lib/auth-client";
-import { getAdminAppointments, updateAdminAppointmentStatus } from "@/lib/api";
+import {
+  getAdminAppointments,
+  updateAdminAppointmentStatus,
+  getAdminUsers,
+  toggleAdminUserBlock,
+} from "@/lib/api";
 
 /* ─────────────────────────────────────────────────────────────────────────────
    Admin Data Models (Adhering to Blueprint Section 2 Wireframe Specifications)
@@ -387,6 +392,43 @@ export default function AdminDashboardPage() {
     };
   }, [session?.user]);
 
+  // Synchronize registered customers with backend MongoDB
+  useEffect(() => {
+    let isMounted = true;
+    async function loadBackendUsers() {
+      try {
+        const raw = await getAdminUsers(session?.user);
+        if (isMounted && Array.isArray(raw) && raw.length > 0) {
+          const mapped: CustomerUser[] = raw.map((u: {
+            _id?: string;
+            id?: string;
+            name?: string;
+            email?: string;
+            phone?: string;
+            createdAt?: string;
+            totalAppointments?: number;
+            isBlocked?: boolean;
+          }) => ({
+            id: String(u._id || u.id),
+            name: u.name || "Customer",
+            email: u.email || "",
+            phone: u.phone || "N/A",
+            joinDate: u.createdAt ? new Date(u.createdAt).toISOString().split("T")[0] : "2026-11-20",
+            totalAppointments: u.totalAppointments || 0,
+            isBlocked: Boolean(u.isBlocked),
+          }));
+          setUsers(mapped);
+        }
+      } catch (err) {
+        console.error("Failed to load backend admin users:", err);
+      }
+    }
+    loadBackendUsers();
+    return () => {
+      isMounted = false;
+    };
+  }, [session?.user]);
+
   // Search & Filter
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -509,11 +551,18 @@ export default function AdminDashboardPage() {
   };
 
   // Toggle Block/Unblock User
-  const handleConfirmBlockToggle = () => {
+  const handleConfirmBlockToggle = async () => {
     if (!blockUserModal) return;
+    const targetId = blockUserModal.id;
+    const nextBlockedState = !blockUserModal.isBlocked;
+    try {
+      await toggleAdminUserBlock(targetId, nextBlockedState, session?.user);
+    } catch (err) {
+      console.warn("Backend user block update error:", err);
+    }
     setUsers((prev) =>
       prev.map((u) =>
-        u.id === blockUserModal.id ? { ...u, isBlocked: !u.isBlocked } : u
+        u.id === targetId ? { ...u, isBlocked: nextBlockedState } : u
       )
     );
     setBlockUserModal(null);

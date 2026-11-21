@@ -202,3 +202,48 @@ export async function updateAdminAppointmentStatus(
   }
   return data;
 }
+
+/**
+ * Fetch all registered customers for Admin Dashboard from MongoDB
+ */
+export async function getAdminUsers(user?: UserSessionParam | null) {
+  const token = await getBackendToken(user);
+  if (!token) return [];
+
+  const res = await fetch(`${API_BASE_URL}/api/admin/users`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!res.ok) return [];
+  const data = await res.json();
+  return data.users || [];
+}
+
+/**
+ * Admin: Block or unblock a customer account
+ */
+export async function toggleAdminUserBlock(
+  userId: string,
+  isBlocked: boolean,
+  user?: UserSessionParam | null
+) {
+  const token = await getBackendToken(user);
+  if (!token) throw new Error("Unauthorized");
+
+  const res = await fetch(`${API_BASE_URL}/api/admin/users/${userId}/block`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ isBlocked }),
+  });
+
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.message || "Failed to update user block status.");
+  }
+  return data;
+}
