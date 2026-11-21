@@ -137,7 +137,24 @@ export default function CustomerDashboardPage() {
   }, [session, isSessionPending, router]);
 
   const [currentTab, setCurrentTab] = useState<string>("overview");
-  const [appointments, setAppointments] = useState<CustomerAppointment[]>(INITIAL_APPOINTMENTS);
+  const [appointments, setAppointments] = useState<CustomerAppointment[]>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const saved = localStorage.getItem("salonbook_saved_appointments");
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            const existingIds = new Set(INITIAL_APPOINTMENTS.map((a) => a.id));
+            const newOnes = parsed.filter((p: CustomerAppointment) => !existingIds.has(p.id));
+            return [...newOnes, ...INITIAL_APPOINTMENTS];
+          }
+        }
+      } catch {
+        return INITIAL_APPOINTMENTS;
+      }
+    }
+    return INITIAL_APPOINTMENTS;
+  });
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
   // Interactive Modal States
