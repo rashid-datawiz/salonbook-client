@@ -124,6 +124,4 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ## 🔗 Project Links
 
-- **Live Application**: *[Live Deployment Link]*
-- **Client GitHub Repository**: *[Client Repository Link]*
-- **Server GitHub Repository**: *[Server Repository Link]*
+- **Live Application**: *https://salonbook-client-rose.vercel.app/*
