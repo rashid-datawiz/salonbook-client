@@ -247,3 +247,90 @@ export async function toggleAdminUserBlock(
   }
   return data;
 }
+
+/**
+ * Customer: Create Stripe Checkout Session for a confirmed appointment
+ */
+export async function createStripeCheckoutSession(
+  appointmentId: string,
+  user?: UserSessionParam | null
+) {
+  const token = await getBackendToken(user);
+  if (!token) throw new Error("You must be logged in to initiate checkout.");
+
+  const res = await fetch(`${API_BASE_URL}/api/payments/create-checkout-session`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ appointmentId }),
+  });
+
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.message || "Failed to initiate Stripe Checkout session.");
+  }
+  return data as { sessionId: string; url: string };
+}
+
+/**
+ * Public / Authenticated: Verify Stripe Checkout Session upon return to success page
+ */
+export async function verifyStripeSession(sessionId: string) {
+  const res = await fetch(
+    `${API_BASE_URL}/api/payments/verify-session/${encodeURIComponent(sessionId)}`
+  );
+
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.message || "Failed to verify Stripe payment session.");
+  }
+  return data as {
+    success: boolean;
+    isPaid: boolean;
+    sessionId: string;
+    amount: number;
+    currency: string;
+    customerEmail: string;
+    customerName: string;
+    appointmentId?: string;
+    serviceName?: string;
+  };
+}
+
+/**
+ * Admin: Fetch all transactions (Strictly Read-Only Financial Ledger)
+ */
+export async function getAdminTransactions(user?: UserSessionParam | null) {
+  const token = await getBackendToken(user);
+  if (!token) return [];
+
+  const res = await fetch(`${API_BASE_URL}/api/admin/transactions`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!res.ok) return [];
+  const data = await res.json();
+  return data.transactions || [];
+}
+
+/**
+ * Customer: Fetch personal payment transactions
+ */
+export async function getCustomerTransactions(user?: UserSessionParam | null) {
+  const token = await getBackendToken(user);
+  if (!token) return [];
+
+  const res = await fetch(`${API_BASE_URL}/api/transactions/my`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!res.ok) return [];
+  const data = await res.json();
+  return data.transactions || [];
+}

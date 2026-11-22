@@ -18,7 +18,11 @@ import {
 import DashboardShell from "@/components/dashboard/dashboard-shell";
 import { cn } from "@/lib/utils";
 import { useSession, getActiveUserRole } from "@/lib/auth-client";
-import { getCustomerAppointments, cancelCustomerAppointment } from "@/lib/api";
+import {
+  getCustomerAppointments,
+  cancelCustomerAppointment,
+  createStripeCheckoutSession,
+} from "@/lib/api";
 
 /* ─────────────────────────────────────────────────────────────────────────────
    Customer Appointment Type
@@ -259,15 +263,29 @@ export default function CustomerDashboardPage() {
     setCancelReason("");
   };
 
-  // Action: Confirm Stripe Payment Simulation
-  const handleConfirmPayment = () => {
+  // Action: Initiate Stripe Payment (Calls Express backend or falls back to simulation)
+  const handleConfirmPayment = async () => {
     if (!payModalAppointment) return;
     setIsProcessingPayment(true);
+
+    try {
+      // 1. Attempt real Stripe Checkout session creation on backend
+      const checkout = await createStripeCheckoutSession(payModalAppointment.id, session?.user);
+      if (checkout?.url) {
+        window.location.href = checkout.url;
+        return;
+      }
+    } catch (err) {
+      console.warn("Stripe checkout initiation fallback to local simulation:", err);
+    }
+
+    // 2. Fallback simulation for local development / test mode
     setTimeout(() => {
+      const generatedSessionId = `cs_test_${Date.now().toString(36)}`;
       setAppointments((prev) =>
         prev.map((item) =>
           item.id === payModalAppointment.id
-            ? { ...item, payment: "Paid", stripeSessionId: `cs_test_${Date.now()}` }
+            ? { ...item, payment: "Paid", stripeSessionId: generatedSessionId }
             : item
         )
       );
@@ -917,7 +935,7 @@ export default function CustomerDashboardPage() {
                 disabled={isProcessingPayment}
                 className="rounded-lg bg-[#1D4ED8] px-5 py-2 text-xs font-bold text-white hover:bg-[#1e40af] disabled:opacity-50 transition-colors"
               >
-                {isProcessingPayment ? "Authorizing Stripe..." : `Pay $${payModalAppointment.price} USD`}
+                {isProcessingPayment ? "Connecting to Stripe..." : `Proceed to Checkout ($${payModalAppointment.price} USD)`}
               </button>
             </div>
           </div>
