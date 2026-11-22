@@ -1,6 +1,40 @@
 export const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001";
 
+/**
+ * Smart fetch with resilient local fallback:
+ * Calls API_BASE_URL. If the app is opened on localhost and the remote backend
+ * is protected or unreachable, it seamlessly attempts the local Express server on port 5001.
+ */
+export async function apiFetch(endpoint: string, options: RequestInit = {}): Promise<Response> {
+  const targetUrl = `${API_BASE_URL}${endpoint}`;
+  try {
+    const res = await fetch(targetUrl, options);
+    if (!res.ok && [401, 403, 404, 502, 503, 504].includes(res.status) && typeof window !== "undefined") {
+      const isLocalHost =
+        window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+      if (isLocalHost && !API_BASE_URL.includes("localhost") && !API_BASE_URL.includes("127.0.0.1")) {
+        try {
+          const localRes = await fetch(`http://localhost:5001${endpoint}`, options);
+          if (localRes.ok) return localRes;
+        } catch {}
+      }
+    }
+    return res;
+  } catch (err) {
+    if (typeof window !== "undefined") {
+      const isLocalHost =
+        window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+      if (isLocalHost && !API_BASE_URL.includes("localhost") && !API_BASE_URL.includes("127.0.0.1")) {
+        try {
+          return await fetch(`http://localhost:5001${endpoint}`, options);
+        } catch {}
+      }
+    }
+    throw err;
+  }
+}
+
 export interface UserSessionParam {
   id?: string;
   email?: string;
@@ -54,7 +88,7 @@ export async function getBackendToken(user?: UserSessionParam | null): Promise<s
 
   // Request new token from backend
   try {
-    const res = await fetch(`${API_BASE_URL}/api/jwt`, {
+    const res = await apiFetch("/api/jwt", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
@@ -102,7 +136,7 @@ export async function createBackendAppointment(
     throw new Error("You must be logged in to book an appointment.");
   }
 
-  const res = await fetch(`${API_BASE_URL}/api/appointments`, {
+  const res = await apiFetch("/api/appointments", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -126,15 +160,20 @@ export async function getCustomerAppointments(user?: UserSessionParam | null) {
   const token = await getBackendToken(user);
   if (!token) return [];
 
-  const res = await fetch(`${API_BASE_URL}/api/appointments/my`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
+  try {
+    const res = await apiFetch("/api/appointments/my", {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
 
-  if (!res.ok) return [];
-  const data = await res.json();
-  return data.appointments || [];
+    if (!res.ok) return [];
+    const data = await res.json();
+    return data.appointments || [];
+  } catch (err) {
+    console.error("getCustomerAppointments error:", err);
+    return [];
+  }
 }
 
 /**
@@ -144,7 +183,7 @@ export async function cancelCustomerAppointment(appointmentId: string, user?: Us
   const token = await getBackendToken(user);
   if (!token) throw new Error("Unauthorized");
 
-  const res = await fetch(`${API_BASE_URL}/api/appointments/${appointmentId}/cancel`, {
+  const res = await apiFetch(`/api/appointments/${appointmentId}/cancel`, {
     method: "PATCH",
     headers: {
       Authorization: `Bearer ${token}`,
@@ -165,15 +204,20 @@ export async function getAdminAppointments(user?: UserSessionParam | null) {
   const token = await getBackendToken(user);
   if (!token) return [];
 
-  const res = await fetch(`${API_BASE_URL}/api/admin/appointments`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
+  try {
+    const res = await apiFetch("/api/admin/appointments", {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
 
-  if (!res.ok) return [];
-  const data = await res.json();
-  return data.appointments || [];
+    if (!res.ok) return [];
+    const data = await res.json();
+    return data.appointments || [];
+  } catch (err) {
+    console.error("getAdminAppointments error:", err);
+    return [];
+  }
 }
 
 /**
@@ -187,7 +231,7 @@ export async function updateAdminAppointmentStatus(
   const token = await getBackendToken(user);
   if (!token) throw new Error("Unauthorized");
 
-  const res = await fetch(`${API_BASE_URL}/api/admin/appointments/${appointmentId}/status`, {
+  const res = await apiFetch(`/api/admin/appointments/${appointmentId}/status`, {
     method: "PATCH",
     headers: {
       "Content-Type": "application/json",
@@ -210,15 +254,20 @@ export async function getAdminUsers(user?: UserSessionParam | null) {
   const token = await getBackendToken(user);
   if (!token) return [];
 
-  const res = await fetch(`${API_BASE_URL}/api/admin/users`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
+  try {
+    const res = await apiFetch("/api/admin/users", {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
 
-  if (!res.ok) return [];
-  const data = await res.json();
-  return data.users || [];
+    if (!res.ok) return [];
+    const data = await res.json();
+    return data.users || [];
+  } catch (err) {
+    console.error("getAdminUsers error:", err);
+    return [];
+  }
 }
 
 /**
@@ -232,7 +281,7 @@ export async function toggleAdminUserBlock(
   const token = await getBackendToken(user);
   if (!token) throw new Error("Unauthorized");
 
-  const res = await fetch(`${API_BASE_URL}/api/admin/users/${userId}/block`, {
+  const res = await apiFetch(`/api/admin/users/${userId}/block`, {
     method: "PATCH",
     headers: {
       "Content-Type": "application/json",
@@ -258,7 +307,7 @@ export async function createStripeCheckoutSession(
   const token = await getBackendToken(user);
   if (!token) throw new Error("You must be logged in to initiate checkout.");
 
-  const res = await fetch(`${API_BASE_URL}/api/payments/create-checkout-session`, {
+  const res = await apiFetch("/api/payments/create-checkout-session", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -278,9 +327,7 @@ export async function createStripeCheckoutSession(
  * Public / Authenticated: Verify Stripe Checkout Session upon return to success page
  */
 export async function verifyStripeSession(sessionId: string) {
-  const res = await fetch(
-    `${API_BASE_URL}/api/payments/verify-session/${encodeURIComponent(sessionId)}`
-  );
+  const res = await apiFetch(`/api/payments/verify-session/${encodeURIComponent(sessionId)}`);
 
   const data = await res.json();
   if (!res.ok) {
@@ -306,15 +353,20 @@ export async function getAdminTransactions(user?: UserSessionParam | null) {
   const token = await getBackendToken(user);
   if (!token) return [];
 
-  const res = await fetch(`${API_BASE_URL}/api/admin/transactions`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
+  try {
+    const res = await apiFetch("/api/admin/transactions", {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
 
-  if (!res.ok) return [];
-  const data = await res.json();
-  return data.transactions || [];
+    if (!res.ok) return [];
+    const data = await res.json();
+    return data.transactions || [];
+  } catch (err) {
+    console.error("getAdminTransactions error:", err);
+    return [];
+  }
 }
 
 /**
@@ -324,13 +376,18 @@ export async function getCustomerTransactions(user?: UserSessionParam | null) {
   const token = await getBackendToken(user);
   if (!token) return [];
 
-  const res = await fetch(`${API_BASE_URL}/api/transactions/my`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
+  try {
+    const res = await apiFetch("/api/transactions/my", {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
 
-  if (!res.ok) return [];
-  const data = await res.json();
-  return data.transactions || [];
+    if (!res.ok) return [];
+    const data = await res.json();
+    return data.transactions || [];
+  } catch (err) {
+    console.error("getCustomerTransactions error:", err);
+    return [];
+  }
 }

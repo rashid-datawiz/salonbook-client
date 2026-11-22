@@ -25,6 +25,7 @@ import {
   TrendingUp,
   FileText,
   Receipt,
+  RefreshCw,
 } from "lucide-react";
 import DashboardShell from "@/components/dashboard/dashboard-shell";
 import { cn } from "@/lib/utils";
@@ -386,6 +387,8 @@ export default function AdminDashboardPage() {
   const [appointments, setAppointments] = useState<AdminAppointment[]>(INITIAL_APPOINTMENTS);
   const [users, setUsers] = useState<CustomerUser[]>(INITIAL_USERS);
   const [transactions, setTransactions] = useState<StripeTransaction[]>(INITIAL_TRANSACTIONS);
+  const [isSyncingAppointments, setIsSyncingAppointments] = useState(false);
+  const [appointmentsSyncTrigger, setAppointmentsSyncTrigger] = useState(0);
 
   // Synchronize appointments with backend MongoDB
   useEffect(() => {
@@ -393,11 +396,16 @@ export default function AdminDashboardPage() {
     async function loadBackendAppointments() {
       try {
         const raw = await getAdminAppointments(session?.user);
-        if (isMounted && Array.isArray(raw) && raw.length > 0) {
+        if (isMounted && Array.isArray(raw)) {
           const mapped: AdminAppointment[] = raw.map((b: {
             _id: string;
             customer?: { name?: string; email?: string; phone?: string };
+            customerName?: string;
+            customerEmail?: string;
+            customerPhone?: string;
             service?: { serviceName?: string; category?: string };
+            serviceName?: string;
+            category?: string;
             appointmentDate?: string;
             timeSlot?: string;
             servicePrice?: number;
@@ -406,11 +414,11 @@ export default function AdminDashboardPage() {
             paymentStatus?: string;
           }) => ({
             id: String(b._id),
-            customerName: b.customer?.name || "Customer",
-            customerEmail: b.customer?.email || "",
-            customerPhone: b.customer?.phone || "N/A",
-            serviceName: b.service?.serviceName || "Salon Service",
-            category: b.service?.category || "Service",
+            customerName: b.customer?.name || b.customerName || "Customer",
+            customerEmail: b.customer?.email || b.customerEmail || "",
+            customerPhone: b.customer?.phone || b.customerPhone || "N/A",
+            serviceName: b.service?.serviceName || b.serviceName || "Salon Service",
+            category: b.service?.category || b.category || "Service",
             date: b.appointmentDate || "",
             time: b.timeSlot || "",
             price: Number(b.servicePrice) || 0,
@@ -420,7 +428,39 @@ export default function AdminDashboardPage() {
               : "Pending") as "Pending" | "Confirmed" | "Cancelled",
             payment: (b.paymentStatus === "paid" ? "Paid" : "Unpaid") as "Paid" | "Unpaid",
           }));
-          setAppointments(mapped);
+
+          // Read any customer appointment requests saved in localStorage
+          let localCustomerAppointments: AdminAppointment[] = [];
+          try {
+            const saved = localStorage.getItem("salonbook_saved_appointments");
+            if (saved) {
+              const parsed = JSON.parse(saved);
+              if (Array.isArray(parsed)) {
+                localCustomerAppointments = parsed.map((p) => ({
+                  id: p.id,
+                  customerName: p.customerName || "Customer Client",
+                  customerEmail: p.customerEmail || "",
+                  customerPhone: p.customerPhone || "N/A",
+                  serviceName: p.serviceName || "Salon Service",
+                  category: p.category || "Service",
+                  date: p.date,
+                  time: p.time,
+                  price: Number(p.price) || 0,
+                  message: p.notes || "",
+                  status: (p.status || "Pending") as "Pending" | "Confirmed" | "Cancelled",
+                  payment: (p.payment || "Unpaid") as "Paid" | "Unpaid",
+                }));
+              }
+            }
+          } catch {}
+
+          const mongoIds = new Set(mapped.map((m) => m.id));
+          const uniqueLocal = localCustomerAppointments.filter((l) => !mongoIds.has(l.id));
+          const allAppointments = [...mapped, ...uniqueLocal];
+
+          if (allAppointments.length > 0) {
+            setAppointments(allAppointments);
+          }
         }
       } catch (err) {
         console.error("Failed to load backend admin appointments:", err);
@@ -430,7 +470,7 @@ export default function AdminDashboardPage() {
     return () => {
       isMounted = false;
     };
-  }, [session?.user]);
+  }, [session?.user, appointmentsSyncTrigger]);
 
   // Synchronize registered customers with backend MongoDB
   useEffect(() => {
@@ -1116,16 +1156,32 @@ export default function AdminDashboardPage() {
          ────────────────────────────────────────────────────────────────────── */}
       {currentTab === "appointments" && (
         <div className="space-y-6">
-          <div>
-            <span className="text-xs font-mono font-bold tracking-wider text-[#1D4ED8] dark:text-[#C4A265] uppercase">
-              APPOINTMENT DISPATCH
-            </span>
-            <h1 className="mt-1 font-heading text-2xl sm:text-3xl font-bold tracking-wider uppercase text-stone-900 dark:text-stone-50">
-              Manage Appointments
-            </h1>
-            <p className="mt-1 text-xs sm:text-sm text-stone-500 dark:text-stone-400 font-light">
-              Review customer booking requests, approve pending appointments, or notify of cancellations.
-            </p>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <span className="text-xs font-mono font-bold tracking-wider text-[#1D4ED8] dark:text-[#C4A265] uppercase">
+                APPOINTMENT DISPATCH
+              </span>
+              <h1 className="mt-1 font-heading text-2xl sm:text-3xl font-bold tracking-wider uppercase text-stone-900 dark:text-stone-50">
+                Manage Appointments
+              </h1>
+              <p className="mt-1 text-xs sm:text-sm text-stone-500 dark:text-stone-400 font-light">
+                Review customer booking requests, approve pending appointments, or notify of cancellations.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                setIsSyncingAppointments(true);
+                setAppointmentsSyncTrigger((prev) => prev + 1);
+                setTimeout(() => setIsSyncingAppointments(false), 500);
+              }}
+              disabled={isSyncingAppointments}
+              className="inline-flex h-9 items-center justify-center gap-2 rounded-lg border border-stone-300 dark:border-stone-700 bg-white dark:bg-[#1E1B18] px-3.5 text-xs font-semibold text-stone-800 dark:text-stone-200 hover:bg-stone-50 dark:hover:bg-white/5 transition-all self-start sm:self-auto shadow-xs cursor-pointer"
+            >
+              <RefreshCw className={cn("size-3.5 text-[#C4A265]", isSyncingAppointments && "animate-spin")} />
+              <span>{isSyncingAppointments ? "Syncing..." : "Sync Appointments"}</span>
+            </button>
           </div>
 
           <div className="rounded-2xl border border-stone-200 bg-white shadow-xs dark:border-stone-800 dark:bg-[#1A1815] overflow-hidden">

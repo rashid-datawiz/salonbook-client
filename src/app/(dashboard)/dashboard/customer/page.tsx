@@ -18,10 +18,12 @@ import {
 import DashboardShell from "@/components/dashboard/dashboard-shell";
 import { cn } from "@/lib/utils";
 import { useSession, getActiveUserRole } from "@/lib/auth-client";
+import { ALL_SERVICES } from "@/data/services";
 import {
   getCustomerAppointments,
   cancelCustomerAppointment,
   createStripeCheckoutSession,
+  createBackendAppointment,
 } from "@/lib/api";
 
 /* ─────────────────────────────────────────────────────────────────────────────
@@ -168,11 +170,14 @@ export default function CustomerDashboardPage() {
     async function loadCustomerAppointments() {
       try {
         const raw = await getCustomerAppointments(session?.user);
-        if (isMounted && Array.isArray(raw) && raw.length > 0) {
+        if (isMounted && Array.isArray(raw)) {
           const mapped: CustomerAppointment[] = raw.map((b: {
             _id: string;
             serviceId?: string;
+            serviceName?: string;
             service?: { serviceName?: string; category?: string; image?: string };
+            category?: string;
+            image?: string;
             appointmentDate?: string;
             timeSlot?: string;
             servicePrice?: number;
@@ -182,10 +187,11 @@ export default function CustomerDashboardPage() {
             message?: string;
           }) => ({
             id: String(b._id),
-            serviceName: b.service?.serviceName || "Salon Service",
-            category: b.service?.category || "Service",
+            serviceName: b.service?.serviceName || b.serviceName || "Salon Service",
+            category: b.service?.category || b.category || "Service",
             image:
               b.service?.image ||
+              b.image ||
               "https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=400&h=300&fit=crop&q=80",
             date: b.appointmentDate || "",
             time: b.timeSlot || "",
@@ -198,7 +204,24 @@ export default function CustomerDashboardPage() {
             stylist: "Master Artisan",
             notes: b.message,
           }));
-          setAppointments(mapped);
+
+          // Read any customer appointment requests saved in localStorage
+          let localSaved: CustomerAppointment[] = [];
+          try {
+            const saved = localStorage.getItem("salonbook_saved_appointments");
+            if (saved) {
+              const parsed = JSON.parse(saved);
+              if (Array.isArray(parsed)) localSaved = parsed;
+            }
+          } catch {}
+
+          const mongoIds = new Set(mapped.map((m) => m.id));
+          const uniqueLocal = localSaved.filter((l) => !mongoIds.has(l.id));
+          const combined = [...mapped, ...uniqueLocal];
+
+          if (combined.length > 0) {
+            setAppointments(combined);
+          }
         }
       } catch (err) {
         console.error("Failed to load customer backend appointments:", err);
@@ -216,6 +239,87 @@ export default function CustomerDashboardPage() {
   const [payModalAppointment, setPayModalAppointment] = useState<CustomerAppointment | null>(null);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [detailsModalAppointment, setDetailsModalAppointment] = useState<CustomerAppointment | null>(null);
+
+  // New Slot Booking Modal States
+  const [isBookModalOpen, setIsBookModalOpen] = useState(false);
+  const [selectedServiceId, setSelectedServiceId] = useState<string>(ALL_SERVICES[0]?.id || "1");
+  const [newBookingDate, setNewBookingDate] = useState<string>("");
+  const [newBookingTime, setNewBookingTime] = useState<string>("11:30 AM");
+  const [newBookingMessage, setNewBookingMessage] = useState<string>("");
+  const [isBookingSubmitting, setIsBookingSubmitting] = useState(false);
+  const [bookingModalError, setBookingModalError] = useState<string | null>(null);
+  const [bookingModalSuccess, setBookingModalSuccess] = useState<string | null>(null);
+
+  const handleCreateNewBooking = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setBookingModalError(null);
+    setBookingModalSuccess(null);
+
+    const chosenService = ALL_SERVICES.find((s) => s.id === selectedServiceId) || ALL_SERVICES[0];
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const targetDate = newBookingDate || tomorrow.toISOString().split("T")[0];
+
+    setIsBookingSubmitting(true);
+    try {
+      const res = await createBackendAppointment(
+        {
+          serviceId: chosenService.id,
+          serviceName: chosenService.name,
+          servicePrice: chosenService.price,
+          category: chosenService.category,
+          image: chosenService.image,
+          appointmentDate: targetDate,
+          timeSlot: newBookingTime,
+          message: newBookingMessage.trim(),
+        },
+        session?.user
+      );
+
+      const newId = res.appointment?._id || `apt-${Date.now().toString().slice(-4)}`;
+      const todayStr = new Date().toISOString().split("T")[0];
+
+      const newRecord: CustomerAppointment = {
+        id: String(newId),
+        serviceName: chosenService.name,
+        category: chosenService.category,
+        image: chosenService.image,
+        date: targetDate,
+        time: newBookingTime,
+        requestDate: todayStr,
+        price: chosenService.price,
+        status: "Pending",
+        payment: "Unpaid",
+        stylist: "Master Artisan",
+        notes: newBookingMessage.trim() || undefined,
+      };
+
+      // Save to localStorage for instant local and admin persistence
+      if (typeof window !== "undefined") {
+        const existingRaw = localStorage.getItem("salonbook_saved_appointments");
+        const existing = existingRaw ? JSON.parse(existingRaw) : [];
+        const fullRecord = {
+          ...newRecord,
+          customerName: session?.user?.name || "Customer",
+          customerEmail: session?.user?.email || "",
+          customerPhone: (session?.user as { phone?: string })?.phone || "N/A",
+        };
+        localStorage.setItem("salonbook_saved_appointments", JSON.stringify([fullRecord, ...existing]));
+      }
+
+      setAppointments((prev) => [newRecord, ...prev.filter((a) => a.id !== newRecord.id)]);
+      setBookingModalSuccess("Appointment request submitted successfully!");
+      setTimeout(() => {
+        setIsBookModalOpen(false);
+        setBookingModalSuccess(null);
+        setNewBookingMessage("");
+      }, 1200);
+    } catch (err: unknown) {
+      setBookingModalError(err instanceof Error ? err.message : "Failed to book appointment slot.");
+    } finally {
+      setIsBookingSubmitting(false);
+    }
+  };
 
   // Profile Form State
   const [profileData, setProfileData] = useState({
@@ -534,13 +638,21 @@ export default function CustomerDashboardPage() {
               </p>
             </div>
 
-            <Link
-              href="/#appointment"
-              className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-[#C4A265] px-4 text-xs font-bold tracking-wider text-stone-950 uppercase hover:bg-[#B39154] transition-colors self-start sm:self-auto"
+            <button
+              type="button"
+              onClick={() => {
+                setBookingModalError(null);
+                setBookingModalSuccess(null);
+                const tom = new Date();
+                tom.setDate(tom.getDate() + 1);
+                setNewBookingDate(tom.toISOString().split("T")[0]);
+                setIsBookModalOpen(true);
+              }}
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-[#C4A265] px-4 text-xs font-bold tracking-wider text-stone-950 uppercase hover:bg-[#B39154] transition-colors self-start sm:self-auto cursor-pointer shadow-sm active:scale-[0.98]"
             >
               <Sparkles className="size-3.5" />
               <span>Book New Slot</span>
-            </Link>
+            </button>
           </div>
 
           {/* Filter Pills */}
@@ -993,6 +1105,148 @@ export default function CustomerDashboardPage() {
                 Close
               </button>
             </div>
+          </div>
+        </div>
+      )}
+      {/* ──────────────────────────────────────────────────────────────────────
+         MODAL 4: BOOK NEW APPOINTMENT SLOT (Direct from Dashboard)
+         ────────────────────────────────────────────────────────────────────── */}
+      {isBookModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="w-full max-w-lg rounded-2xl border border-stone-200 bg-white p-6 sm:p-7 shadow-2xl dark:border-stone-800 dark:bg-[#1C1A17] text-stone-900 dark:text-stone-100 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between pb-4 border-b border-stone-200 dark:border-stone-800">
+              <div>
+                <span className="text-[11px] font-mono font-bold tracking-widest text-[#C4A265] uppercase">
+                  NEW RESERVATION
+                </span>
+                <h3 className="font-heading text-xl font-bold uppercase tracking-wider text-stone-900 dark:text-stone-50">
+                  Book Appointment Slot
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsBookModalOpen(false)}
+                className="text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 p-1 rounded-lg"
+              >
+                ✕
+              </button>
+            </div>
+
+            {bookingModalError && (
+              <div className="mt-4 rounded-lg bg-red-500/10 border border-red-500/30 p-3 text-xs text-red-600 dark:text-red-400">
+                {bookingModalError}
+              </div>
+            )}
+
+            {bookingModalSuccess && (
+              <div className="mt-4 rounded-lg bg-emerald-500/10 border border-emerald-500/30 p-3 text-xs text-emerald-600 dark:text-emerald-400 flex items-center gap-2">
+                <CheckCircle2 className="size-4 shrink-0" />
+                <span>{bookingModalSuccess}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleCreateNewBooking} className="mt-4 space-y-4">
+              {/* Select Service */}
+              <div>
+                <label className="block text-xs font-semibold text-stone-700 dark:text-stone-300 mb-1.5">
+                  Select Salon Service <span className="text-red-500">*</span>
+                </label>
+                <select
+                  value={selectedServiceId}
+                  onChange={(e) => setSelectedServiceId(e.target.value)}
+                  className="w-full rounded-lg border border-stone-300 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 px-3.5 py-2.5 text-xs text-stone-900 dark:text-stone-100 focus:border-[#C4A265] focus:outline-none"
+                >
+                  {ALL_SERVICES.map((srv) => (
+                    <option key={srv.id} value={srv.id}>
+                      {srv.name} — ${srv.price} USD ({srv.category})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Date & Time Slot Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                <div>
+                  <label className="block text-xs font-semibold text-stone-700 dark:text-stone-300 mb-1.5">
+                    Appointment Date <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    value={newBookingDate}
+                    onChange={(e) => setNewBookingDate(e.target.value)}
+                    className="w-full rounded-lg border border-stone-300 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 px-3.5 py-2.5 text-xs text-stone-900 dark:text-stone-100 focus:border-[#C4A265] focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-stone-700 dark:text-stone-300 mb-1.5">
+                    Preferred Time Slot <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    value={newBookingTime}
+                    onChange={(e) => setNewBookingTime(e.target.value)}
+                    className="w-full rounded-lg border border-stone-300 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 px-3.5 py-2.5 text-xs text-stone-900 dark:text-stone-100 focus:border-[#C4A265] focus:outline-none"
+                  >
+                    <option value="10:00 AM">10:00 AM (Morning)</option>
+                    <option value="11:30 AM">11:30 AM (Mid-Day)</option>
+                    <option value="01:00 PM">01:00 PM (Afternoon)</option>
+                    <option value="02:30 PM">02:30 PM (Afternoon)</option>
+                    <option value="04:00 PM">04:00 PM (Late Afternoon)</option>
+                    <option value="05:30 PM">05:30 PM (Evening)</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Special Instructions */}
+              <div>
+                <label className="block text-xs font-semibold text-stone-700 dark:text-stone-300 mb-1.5">
+                  Special Instructions or Grooming Preferences
+                </label>
+                <textarea
+                  rows={2}
+                  value={newBookingMessage}
+                  onChange={(e) => setNewBookingMessage(e.target.value)}
+                  placeholder="e.g. Sensitive skin styling, prefer specific stylist, etc."
+                  className="w-full rounded-lg border border-stone-300 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 p-3 text-xs text-stone-900 dark:text-stone-100 focus:border-[#C4A265] focus:outline-none"
+                />
+              </div>
+
+              <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-stone-200 dark:border-stone-800">
+                <Link
+                  href="/services"
+                  className="text-[11px] font-medium text-[#C4A265] hover:underline"
+                >
+                  Or browse full services catalog →
+                </Link>
+
+                <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setIsBookModalOpen(false)}
+                    className="rounded-lg border border-stone-300 px-4 py-2 text-xs font-semibold text-stone-700 hover:bg-stone-100 dark:border-stone-700 dark:text-stone-300 dark:hover:bg-stone-800"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isBookingSubmitting}
+                    className="rounded-lg bg-[#C4A265] px-5 py-2 text-xs font-bold text-stone-950 uppercase hover:bg-[#B39154] disabled:opacity-50 transition-colors flex items-center gap-1.5"
+                  >
+                    {isBookingSubmitting ? (
+                      <>
+                        <Loader2 className="size-3.5 animate-spin" />
+                        <span>Reserving...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="size-3.5" />
+                        <span>Confirm Request</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </form>
           </div>
         </div>
       )}
