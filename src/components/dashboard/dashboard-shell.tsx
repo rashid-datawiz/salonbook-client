@@ -85,6 +85,8 @@ export default function DashboardShell({
       router.refresh();
     } catch (err) {
       console.error("Sign out failed", err);
+      router.push("/signin");
+      router.refresh();
     } finally {
       setIsSigningOut(false);
     }

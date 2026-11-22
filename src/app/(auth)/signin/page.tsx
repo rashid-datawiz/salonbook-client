@@ -68,9 +68,12 @@ export default function SignInPage() {
 
       setSuccessMessage("Authenticated successfully! Routing to your dashboard...");
       setTimeout(() => {
+        setSuccessMessage(null);
+        setPassword("");
+        setEmail("");
         router.push("/dashboard");
         router.refresh();
-      }, 500);
+      }, 700);
     } catch (err) {
       setErrorMessage(
         err instanceof Error
@@ -113,9 +116,13 @@ export default function SignInPage() {
   const handleSignOut = async () => {
     setIsSigningOut(true);
     setErrorMessage(null);
+    setSuccessMessage(null);
+    setEmail("");
+    setPassword("");
     try {
       clearUserRolePreference();
       await signOut();
+      router.push("/signin");
       router.refresh();
     } catch (err) {
       setErrorMessage(err instanceof Error ? err.message : "Failed to sign out.");
