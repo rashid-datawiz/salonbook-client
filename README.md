@@ -1,6 +1,5 @@
 # SalonBook — Client Application
 
-> **Assignment 9 — Category: 002**  
 > Luxury Salon & Concierge Grooming Appointment Booking Platform.
 
 ---
@@ -25,7 +24,6 @@ The platform provides a dual role-based experience:
   - Live client-side and URL-synced search by service name.
   - Category pill filter with dynamic counts.
   - Challenge Requirement: **Sorting by price (ascending/descending)** and duration.
-  - Zero-state reset controls.
 - **Dynamic Service Details & Booking (`/services/[id]`)**:
   - Full ritual breakdown, duration, price, and sterilization guarantee.
   - Role-aware booking widget (Guests guided to sign in, Admins warned against client booking, Inactive rituals locked).
